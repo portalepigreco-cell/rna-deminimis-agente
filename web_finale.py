@@ -45,8 +45,12 @@ def calcola_deminimis():
             
             # Inizializza calcolatore RNA
             # Import lazy per evitare errori di dipendenze all'avvio su Render
-            from rna_deminimis_playwright import RNACalculator
-            calc = RNACalculator(headless=True)
+            try:
+                from rna_deminimis_playwright import RNACalculator
+                calc = RNACalculator(headless=True)
+            except Exception as e:
+                print(f"⚠️ Errore inizializzazione RNA Calculator: {e}")
+                return jsonify({"errore": "Servizio temporaneamente non disponibile su Free Plan. Upgrade a Hobby ($19) per prestazioni complete."}), 503
             
             for piva in partite_iva:
                 piva = piva.strip()
@@ -108,8 +112,12 @@ def calcola_deminimis():
             print(f"🏢 Avvio calcolo aggregato per C.F.: {partita_iva}")
             
             # 1. Cerca associate nell'archivio Cribis (import lazy)
-            from cribis_connector import CribisXConnector
-            cribis = CribisXConnector(headless=True)
+            try:
+                from cribis_connector import CribisXConnector
+                cribis = CribisXConnector(headless=True)
+            except Exception as e:
+                print(f"⚠️ Errore inizializzazione Cribis: {e}")
+                return jsonify({"errore": "Servizio Cribis temporaneamente non disponibile su Free Plan. Upgrade a Hobby ($19) per prestazioni complete."}), 503
             risultato_cribis = cribis.cerca_associate(partita_iva)
             
             if risultato_cribis.get("errore"):
@@ -130,8 +138,12 @@ def calcola_deminimis():
             print(f"📋 Società da calcolare: {len(societa_da_calcolare)}")
             
             # 3. Calcola de minimis per ogni società (import lazy)
-            from rna_deminimis_playwright import RNACalculator
-            calc = RNACalculator(headless=True)
+            try:
+                from rna_deminimis_playwright import RNACalculator
+                calc = RNACalculator(headless=True)
+            except Exception as e:
+                print(f"⚠️ Errore inizializzazione RNA Calculator: {e}")
+                return jsonify({"errore": "Servizio temporaneamente non disponibile su Free Plan. Upgrade a Hobby ($19) per prestazioni complete."}), 503
             risultati_dettaglio = []
             totale_gruppo = 0
             
@@ -253,8 +265,12 @@ def cribis_nuova_ricerca():
         # Chiama la funzione di ricerca (browser visibile per ora)
         print(f"🔍 Avvio Nuova Ricerca Cribis per P.IVA: {partita_iva}")
         # Import lazy per evitare errori di dipendenze all'avvio su Render
-        from cribis_nuova_ricerca import cerca_associate_nuova_procedura
-        risultato = cerca_associate_nuova_procedura(partita_iva, headless=False)
+        try:
+            from cribis_nuova_ricerca import cerca_associate_nuova_procedura
+            risultato = cerca_associate_nuova_procedura(partita_iva, headless=False)
+        except Exception as e:
+            print(f"⚠️ Errore inizializzazione Cribis Nuova Ricerca: {e}")
+            return jsonify({"errore": "Servizio Cribis temporaneamente non disponibile su Free Plan. Upgrade a Hobby ($19) per prestazioni complete."}), 503
         
         # Formatta il risultato per il frontend
         if risultato.get("errore"):
@@ -288,8 +304,12 @@ def cribis_nuova_ricerca():
                 societa_da_calcolare.append(cf)
         
         # Calcola de minimis per ogni società (import lazy)
-        from rna_deminimis_playwright import RNACalculator
-        calc = RNACalculator(headless=True)
+        try:
+            from rna_deminimis_playwright import RNACalculator
+            calc = RNACalculator(headless=True)
+        except Exception as e:
+            print(f"⚠️ Errore inizializzazione RNA Calculator: {e}")
+            return jsonify({"errore": "Servizio temporaneamente non disponibile su Free Plan. Upgrade a Hobby ($19) per prestazioni complete."}), 503
         risultati_dettaglio = []
         totale_gruppo = 0
         numero_aiuti_totale = 0
@@ -380,6 +400,12 @@ if __name__ == '__main__':
     print(f"🔧 Debug: {DEBUG}")
     print("🎯 Calcolo reale da RNA.gov.it + Cribis")
     print("📋 Output con copia Markdown")
+    
+    # Verifica ambiente Render
+    if os.environ.get('RENDER'):
+        print("🚀 Deploy su Render rilevato")
+        print("⚠️  Su Free Plan: funzionalità Cribis/RNA potrebbero essere limitate")
+        print("💡 Upgrade a Hobby ($19) per prestazioni complete")
     
     if not DEBUG:
         print("🚀 Modalità PRODUZIONE - App pronta per Render")
