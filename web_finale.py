@@ -14,12 +14,6 @@ from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
 import re
 from datetime import datetime
-# Import per Nuova Ricerca Cribis
-from cribis_nuova_ricerca import cerca_associate_nuova_procedura
-# Import per calcolo RNA corretto
-from rna_deminimis_playwright import RNACalculator
-# Import per ricerca archivio Cribis
-from cribis_connector import CribisXConnector
 
 app = Flask(__name__)
 CORS(app)
@@ -50,6 +44,8 @@ def calcola_deminimis():
             partite_iva = data.get('partite_iva', [])
             
             # Inizializza calcolatore RNA
+            # Import lazy per evitare errori di dipendenze all'avvio su Render
+            from rna_deminimis_playwright import RNACalculator
             calc = RNACalculator(headless=True)
             
             for piva in partite_iva:
@@ -111,7 +107,8 @@ def calcola_deminimis():
             
             print(f"🏢 Avvio calcolo aggregato per C.F.: {partita_iva}")
             
-            # 1. Cerca associate nell'archivio Cribis
+            # 1. Cerca associate nell'archivio Cribis (import lazy)
+            from cribis_connector import CribisXConnector
             cribis = CribisXConnector(headless=True)
             risultato_cribis = cribis.cerca_associate(partita_iva)
             
@@ -132,7 +129,8 @@ def calcola_deminimis():
             
             print(f"📋 Società da calcolare: {len(societa_da_calcolare)}")
             
-            # 3. Calcola de minimis per ogni società
+            # 3. Calcola de minimis per ogni società (import lazy)
+            from rna_deminimis_playwright import RNACalculator
             calc = RNACalculator(headless=True)
             risultati_dettaglio = []
             totale_gruppo = 0
@@ -254,6 +252,8 @@ def cribis_nuova_ricerca():
         
         # Chiama la funzione di ricerca (browser visibile per ora)
         print(f"🔍 Avvio Nuova Ricerca Cribis per P.IVA: {partita_iva}")
+        # Import lazy per evitare errori di dipendenze all'avvio su Render
+        from cribis_nuova_ricerca import cerca_associate_nuova_procedura
         risultato = cerca_associate_nuova_procedura(partita_iva, headless=False)
         
         # Formatta il risultato per il frontend
@@ -287,7 +287,8 @@ def cribis_nuova_ricerca():
             if cf and cf not in societa_da_calcolare:
                 societa_da_calcolare.append(cf)
         
-        # Calcola de minimis per ogni società
+        # Calcola de minimis per ogni società (import lazy)
+        from rna_deminimis_playwright import RNACalculator
         calc = RNACalculator(headless=True)
         risultati_dettaglio = []
         totale_gruppo = 0
