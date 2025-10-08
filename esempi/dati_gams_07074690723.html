@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GAMS S.R.L - Codice Fiscale 07074690723</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #0d1117;
+            color: #e6edf3;
+            line-height: 1.6;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 40px;
+            background: linear-gradient(135deg, #1f6feb, #388bfd);
+            border-radius: 20px;
+            color: white;
+            box-shadow: 0 10px 30px rgba(31, 111, 235, 0.3);
+        }
+        
+        .company-logo {
+            font-size: 4em;
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .cf-highlight {
+            background: rgba(255,255,255,0.2);
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-family: 'Courier New', monospace;
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-top: 15px;
+            display: inline-block;
+        }
+        
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        
+        .summary-card {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 25px;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+        
+        .summary-card:hover {
+            transform: translateY(-5px);
+            border-color: #58a6ff;
+        }
+        
+        .summary-number {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #3fb950;
+            display: block;
+            margin-bottom: 10px;
+        }
+        
+        .summary-label {
+            color: #8b949e;
+            font-size: 1em;
+        }
+        
+        .main-content {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+        }
+        
+        .content-header {
+            background: #21262d;
+            padding: 20px;
+            border-bottom: 1px solid #30363d;
+        }
+        
+        .content-title {
+            color: #58a6ff;
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+        
+        .section {
+            padding: 30px;
+            border-bottom: 1px solid #21262d;
+        }
+        
+        .section:last-child {
+            border-bottom: none;
+        }
+        
+        .section-title {
+            color: #ffa657;
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .field-container {
+            display: grid;
+            grid-template-columns: 200px 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+            align-items: start;
+        }
+        
+        .field-label {
+            color: #f85149;
+            font-weight: 600;
+            background: #21262d;
+            padding: 10px 15px;
+            border-radius: 8px;
+            border-left: 4px solid #f85149;
+            font-size: 0.9em;
+        }
+        
+        .field-value {
+            color: #e6edf3;
+            background: #0d1117;
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: 1px solid #30363d;
+            word-break: break-word;
+        }
+        
+        .field-value.highlight {
+            background: #1c2128;
+            border-color: #ffa657;
+            color: #ffa657;
+            font-weight: bold;
+        }
+        
+        .field-value.code {
+            font-family: 'Courier New', monospace;
+            background: #1c2128;
+            color: #79c0ff;
+            border-color: #79c0ff;
+        }
+        
+        .field-value.amount {
+            color: #3fb950;
+            font-weight: bold;
+            font-size: 1.2em;
+            background: #0d2117;
+            border-color: #3fb950;
+        }
+        
+        .field-value.date {
+            color: #d2a8ff;
+            font-weight: 500;
+            background: #1c1629;
+            border-color: #d2a8ff;
+        }
+        
+        .field-value.link {
+            background: #0c1821;
+            border-color: #58a6ff;
+        }
+        
+        .field-value.link a {
+            color: #58a6ff;
+            text-decoration: none;
+            word-break: break-all;
+        }
+        
+        .field-value.link a:hover {
+            text-decoration: underline;
+        }
+        
+        .description-box {
+            background: #0d1117;
+            border: 2px solid #30363d;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            max-height: 200px;
+            overflow-y: auto;
+            line-height: 1.7;
+        }
+        
+        .component-section {
+            background: #1c2128;
+            border: 1px solid #444c56;
+            border-radius: 12px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+        
+        .component-header {
+            background: #21262d;
+            padding: 15px 20px;
+            color: #ffa657;
+            font-weight: bold;
+            border-bottom: 1px solid #444c56;
+        }
+        
+        .component-body {
+            padding: 20px;
+        }
+        
+        .instrument-box {
+            background: #161b22;
+            border: 2px solid #3fb950;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .instrument-header {
+            color: #3fb950;
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            color: #8b949e;
+            font-size: 0.9em;
+            padding: 30px;
+            background: #161b22;
+            border-radius: 12px;
+            border: 1px solid #30363d;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            background: #1f6feb;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-size: 0.8em;
+            font-weight: 500;
+            margin: 5px;
+        }
+        
+        .printable {
+            color: #8b949e;
+            font-size: 0.8em;
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        @media print {
+            body { background: white; color: black; }
+            .main-content { border: 1px solid #ccc; }
+            .section { border-bottom: 1px solid #ccc; }
+        }
+        
+        @media (max-width: 768px) {
+            .field-container {
+                grid-template-columns: 1fr;
+                gap: 8px;
+            }
+            
+            .summary-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header Azienda -->
+        <div class="header">
+            <div class="company-logo">🏢</div>
+            <h1>GAMS S.R.L</h1>
+            <div class="cf-highlight">CF: 07074690723</div>
+        </div>
+
+        <!-- Riassunto Rapido -->
+        <div class="summary-grid">
+            <div class="summary-card">
+                <span class="summary-number">€ 55.985</span>
+                <div class="summary-label">Importo Aiuto</div>
+            </div>
+            <div class="summary-card">
+                <span class="summary-number">1</span>
+                <div class="summary-label">Aiuto Ricevuto</div>
+            </div>
+            <div class="summary-card">
+                <span class="summary-number">Puglia</span>
+                <div class="summary-label">Regione</div>
+            </div>
+            <div class="summary-card">
+                <span class="summary-number">PMI</span>
+                <div class="summary-label">Tipologia</div>
+            </div>
+        </div>
+
+        <!-- Contenuto Principale -->
+        <div class="main-content">
+            <div class="content-header">
+                <div class="content-title">📊 Dati Completi RNA - Luglio 2025</div>
+            </div>
+
+            <!-- Sezione 1: Informazioni Misura -->
+            <div class="section">
+                <div class="section-title">
+                    <span>📋</span> Informazioni Misura di Aiuto
+                </div>
+                
+                <div class="field-container">
+                    <div class="field-label">CAR (Codice Aiuto)</div>
+                    <div class="field-value code">30755</div>
+                </div>
+                
+                <div class="field-container">
+                    <div class="field-label">Titolo Misura</div>
+                    <div class="field-value highlight">TRASFORMAZIONI "Servizi per l'innovazione e l'avanzamento tecnologico e interventi per la trasformazione digitale a supporto delle PMI"</div>
+                </div>
+                
+                <div class="field-container">
+                    <div class="field-label">Tipo Misura</div>
+                    <div class="field-value">Regime di aiuti</div>
+                </div>
+                
+                <div class="field-container">
+                    <div class="field-label">Codice CE Misura</div>
+                    <div class="field-value code">SA.115161</div>
+                </div>
+                
+                <div class="field-container">
+                    <div class="field-label">Base Giuridica Nazionale</div>
+                    <div class="field-value">Determinazione del Dirigente della Sezione Crescita Digitale delle persone, del territorio e delle imprese n.64 del 24/06/2024 pubblicata sul BURP n.52 del 27/06/2024</div>
+                </div>
+            </div>
+
+            <!-- Sezione 2: Ente Concedente -->
+            <div class="section">
+                <div class="section-title">
+                    <span>🏛️</span> Ente Concedente
+                </div>
+                
+                <div class="field-container">
+                    <div class="field-label">Identificativo Ufficio</div>
+                    <div class="field-value code">47434</div>
+                </div>
+                
+                <div class="field-container">
+                    <div class="field-label">Soggetto Concedente</div>
+                    <div class="field-value highlight">Regione Puglia - Dipartimento Sviluppo Economico</div>
+                </div>
+            </div>
+
+            <!-- Sezione 3: Dati Progetto -->
+            <div class="section">
+                <div class="section-title">
+                    <span>🚀</span> Dati del Progetto
+                </div>
+                
+                <div class="field-container">
+                    <div class="field-label">COR (Codice Operazione)</div>
+                    <div class="field-value code">24465197</div>
+                </div>
+                
+                <div class="field-container">
+                    <div class="field-label">Titolo Progetto</div>
+                    <div class="field-value highlight">GAMS ECOMMERCE E CAMBIAMENTO ORGANIZZATIVO</div>
+                </div>
+                
+                <div class="field-container">
+                    <div class="field-label">Descrizione Progetto</div>
+                    <div class="field-value">
+                        <div class="description-box">
+                            Il progetto di attivazione dei servizi per lo sviluppo e adozione di soluzioni e-commerce e dei Servizi di supporto digitale al cambiamento organizzativo della società GAMS si colloca all'interno del settore del commercio al dettaglio di abbigliamento moda mare. Questo settore è caratterizzato da una forte competitività e da un'elevata esigenza di offrire esperienze di acquisto personalizzate e di alta qualità ai clienti. La digitalizzazione sta rivoluzionando il modo in cui le aziende di moda interagiscono con i clienti, gestiscono le operazioni e ottimizzano le catene di approvvigionamento. Per tali ragioni GAMS ha intrapreso un percorso di sviluppo e perfezionamento di tali processi grazie al supporto del Bando della Regione Puglia Trasformazioni.
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="field-container">
+                    <div class="field-label">Link Trasparenza</div>
+                    <div class="field-value link">
+                        <a href="https://www.regione.puglia.it/documents/1222296/8800984/DET_64_24_6_2024.pdf/66b9fe33-f7fa-4104-72a3-7ff8ccb54d86?t=1719502495198" target="_blank">
+                            📄 Documento Ufficiale Regione Puglia
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="field-container">
+                    <div class="field-label">Data Concessione</div>
+                    <div class="field-value date">📅 1° luglio 2025</div>
+                </div>
+                
+                <div class="field-container">
+                    <div class="field-label">CUP (Codice Unico Progetto)</div>
+                    <div class="field-value code">B97H24002050007</div>
+                </div>
+                
+                <div class="field-container">
+                    <div class="field-label">Atto di Concessione</div>
+                    <div class="field-value">AD n. 180/2025</div>
+                </div>
+            </div>
+
+            <!-- Sezione 4: Dati Beneficiario -->
+            <div class="section">
+                <div class="section-title">
+                    <span>🏢</span> Dati del Beneficiario
+                </div>
+                
+                <div class="field-container">
+                    <div class="field-label">Denominazione Beneficiario</div>
+                    <div class="field-value highlight">GAMS S.R.L</div>
+                </div>
+                
+                <div class="field-container">
+                    <div class="field-label">Codice Fiscale</div>
+                    <div class="field-value code">07074690723</div>
+                </div>
+                
+                <div class="field-container">
+                    <div class="field-label">Tipo Beneficiario</div>
+                    <div class="field-value">
+                        <span class="status-badge">PMI - Piccola Media Impresa</span>
+                    </div>
+                </div>
+                
+                <div class="field-container">
+                    <div class="field-label">Regione Beneficiario</div>
+                    <div class="field-value">🏖️ Puglia</div>
+                </div>
+            </div>
+
+            <!-- Sezione 5: Componenti Aiuto -->
+            <div class="section">
+                <div class="section-title">
+                    <span>💰</span> Componenti dell'Aiuto
+                </div>
+                
+                <div class="component-section">
+                    <div class="component-header">
+                        🎯 Componente Aiuto Principale
+                    </div>
+                    <div class="component-body">
+                        <div class="field-container">
+                            <div class="field-label">ID Componente Aiuto</div>
+                            <div class="field-value code">27083809</div>
+                        </div>
+                        
+                        <div class="field-container">
+                            <div class="field-label">Codice Procedimento</div>
+                            <div class="field-value code">3</div>
+                        </div>
+                        
+                        <div class="field-container">
+                            <div class="field-label">Descrizione Procedimento</div>
+                            <div class="field-value">⚖️ Esenzione</div>
+                        </div>
+                        
+                        <div class="field-container">
+                            <div class="field-label">Codice Regolamento</div>
+                            <div class="field-value code">CE651/2014</div>
+                        </div>
+                        
+                        <div class="field-container">
+                            <div class="field-label">Descrizione Regolamento</div>
+                            <div class="field-value">📜 Reg. CE 651/2014 esenzione generale per categoria (GBER) e ss.mm.ii</div>
+                        </div>
+                        
+                        <div class="field-container">
+                            <div class="field-label">Codice Obiettivo</div>
+                            <div class="field-value code">501616</div>
+                        </div>
+                        
+                        <div class="field-container">
+                            <div class="field-label">Descrizione Obiettivo</div>
+                            <div class="field-value highlight">🔬 Aiuti a favore di ricerca, sviluppo e innovazione | Aiuti per l'innovazione dei processi e dell'organizzazione (art. 29)</div>
+                        </div>
+                        
+                        <div class="field-container">
+                            <div class="field-label">Settore di Attività</div>
+                            <div class="field-value code">📊 (NACE 2) C.14.1</div>
+                        </div>
+                        
+                        <!-- Strumento di Aiuto -->
+                        <div class="instrument-box">
+                            <div class="instrument-header">
+                                💳 Strumento di Aiuto Utilizzato
+                            </div>
+                            
+                            <div class="field-container">
+                                <div class="field-label">Codice Strumento</div>
+                                <div class="field-value code">37</div>
+                            </div>
+                            
+                            <div class="field-container">
+                                <div class="field-label">Descrizione Strumento</div>
+                                <div class="field-value">💸 Sovvenzione/Contributo in conto interessi</div>
+                            </div>
+                            
+                            <div class="field-container">
+                                <div class="field-label">Elemento di Aiuto</div>
+                                <div class="field-value amount">💰 € 55.985,00</div>
+                            </div>
+                            
+                            <div class="field-container">
+                                <div class="field-label">Importo Nominale</div>
+                                <div class="field-value amount">💰 € 55.985,00</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analisi e Insights -->
+        <div style="background: #161b22; border: 1px solid #30363d; border-radius: 15px; padding: 30px; margin-top: 30px;">
+            <h3 style="color: #58a6ff; margin-bottom: 20px;">🔍 Analisi del Caso</h3>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                <div style="background: #0d1117; padding: 20px; border-radius: 10px; border: 1px solid #21262d;">
+                    <h4 style="color: #ffa657; margin-bottom: 10px;">🎯 Settore di Attività</h4>
+                    <p style="color: #e6edf3; font-size: 0.9em;">
+                        <strong>NACE C.14.1:</strong> Fabbricazione di abbigliamento, escluso abbigliamento in pelliccia. GAMS opera nel settore moda mare con focus su digitalizzazione e e-commerce.
+                    </p>
+                </div>
+                
+                <div style="background: #0d1117; padding: 20px; border-radius: 10px; border: 1px solid #21262d;">
+                    <h4 style="color: #3fb950; margin-bottom: 10px;">💡 Innovazione</h4>
+                    <p style="color: #e6edf3; font-size: 0.9em;">
+                        Il progetto riguarda la <strong>trasformazione digitale</strong> con sviluppo di soluzioni e-commerce e servizi di supporto per il cambiamento organizzativo.
+                    </p>
+                </div>
+                
+                <div style="background: #0d1117; padding: 20px; border-radius: 10px; border: 1px solid #21262d;">
+                    <h4 style="color: #f85149; margin-bottom: 10px;">⚖️ Quadro Normativo</h4>
+                    <p style="color: #e6edf3; font-size: 0.9em;">
+                        Aiuto erogato sotto il <strong>Regolamento GBER CE 651/2014</strong> per l'innovazione dei processi e dell'organizzazione (Art. 29).
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <h4 style="color: #58a6ff; margin-bottom: 15px;">📋 Riepilogo Dati</h4>
+            <p><strong>Azienda:</strong> GAMS S.R.L (CF: 07074690723)</p>
+            <p><strong>Aiuto Totale:</strong> € 55.985,00</p>
+            <p><strong>Misura:</strong> Trasformazioni digitali PMI - Regione Puglia</p>
+            <p><strong>Data Concessione:</strong> 1° luglio 2025</p>
+            
+            <div class="printable">
+                <p>Dati estratti da: OpenData_Aiuti_2025_07.xml</p>
+                <p>Generato il <span id="currentDate"></span> | Fonte: RNA - Registro Nazionale Aiuti</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Imposta data corrente
+        document.getElementById('currentDate').textContent = 
+            new Date().toLocaleDateString('it-IT') + ' alle ' + new Date().toLocaleTimeString('it-IT');
+        
+        // Animazione di entrata per le sezioni
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+        
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+        
+        // Applica animazione a tutte le sezioni
+        document.querySelectorAll('.section, .summary-card').forEach(element => {
+            element.style.opacity = '0';
+            element.style.transform = 'translateY(20px)';
+            element.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+            observer.observe(element);
+        });
+        
+        // Evidenziazione delle informazioni importanti
+        const highlightElements = document.querySelectorAll('.field-value.highlight');
+        highlightElements.forEach(element => {
+            element.addEventListener('mouseenter', function() {
+                this.style.transform = 'scale(1.02)';
+                this.style.boxShadow = '0 4px 15px rgba(255, 166, 87, 0.3)';
+            });
+            
+            element.addEventListener('mouseleave', function() {
+                this.style.transform = 'scale(1)';
+                this.style.boxShadow = 'none';
+            });
+        });
+    </script>
+</body>
+</html>

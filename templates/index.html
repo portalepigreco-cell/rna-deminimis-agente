@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RNA De Minimis Calculator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d30 100%);
+            color: #e4e4e4;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 30px;
+            background: rgba(42, 42, 46, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            color: #4a9eff;
+            font-size: 2.5em;
+            font-weight: 600;
+        }
+
+        .subtitle {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #a0a0a0;
+            font-size: 1.1em;
+        }
+
+        .input-section {
+            margin-bottom: 30px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #c9c9c9;
+            font-weight: 500;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 15px;
+            background: #3c3c3c;
+            border: 1px solid #555;
+            border-radius: 8px;
+            color: #e4e4e4;
+            font-size: 16px;
+            font-family: 'Courier New', monospace;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #4a9eff;
+            box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.2);
+        }
+
+        textarea::placeholder {
+            color: #888;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #4a9eff 0%, #0066cc 100%);
+            border: none;
+            color: white;
+            padding: 15px 30px;
+            font-size: 18px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(74, 158, 255, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+            color: #4a9eff;
+        }
+
+        .spinner {
+            border: 3px solid #333;
+            border-top: 3px solid #4a9eff;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .results {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .result-item {
+            background: #333;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 4px solid #4a9eff;
+            transition: transform 0.2s;
+        }
+
+        .result-item:hover {
+            transform: translateX(5px);
+        }
+
+        .result-item.error {
+            border-left-color: #ff4757;
+            background: rgba(255, 71, 87, 0.1);
+        }
+
+        .result-item.warning {
+            border-left-color: #ffa502;
+            background: rgba(255, 165, 2, 0.1);
+        }
+
+        .result-item.success {
+            border-left-color: #2ed573;
+            background: rgba(46, 213, 115, 0.1);
+        }
+
+        .result-item.no-data {
+            border-left-color: #747d8c;
+            background: rgba(116, 125, 140, 0.1);
+        }
+
+        .piva {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #4a9eff;
+            font-family: 'Courier New', monospace;
+        }
+
+        .amount {
+            font-size: 2em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .amount.zero { color: #747d8c; }
+        .amount.low { color: #2ed573; }
+        .amount.medium { color: #ffa502; }
+        .amount.high { color: #ff4757; }
+
+        .details {
+            font-size: 0.9em;
+            color: #a0a0a0;
+            margin-top: 10px;
+        }
+
+        .error-msg {
+            color: #ff4757;
+            font-weight: 500;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #444;
+            color: #888;
+            font-size: 0.9em;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                margin: 10px;
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+            
+            .amount {
+                font-size: 1.5em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 RNA De Minimis</h1>
+        <p class="subtitle">Calcola automaticamente il de minimis per una o più Partite IVA</p>
+        
+        <div class="input-section">
+            <label for="partite-iva">Partite IVA (una per riga):</label>
+            <textarea 
+                id="partite-iva" 
+                placeholder="03254550738&#10;04108170962&#10;01234567890"
+                rows="4"
+            ></textarea>
+        </div>
+        
+        <button class="btn" onclick="calcolaDeminimis()">
+            📊 Calcola De Minimis
+        </button>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Elaborazione in corso... ⏳</p>
+        </div>
+        
+        <div class="results" id="results"></div>
+        
+        <div class="footer">
+            <p>🔧 Pigreco Team • RNA De Minimis Calculator</p>
+        </div>
+    </div>
+
+    <script>
+        async function calcolaDeminimis() {
+            const textarea = document.getElementById('partite-iva');
+            const loading = document.getElementById('loading');
+            const results = document.getElementById('results');
+            const btn = document.querySelector('.btn');
+            
+            // Ottieni P.IVA dal textarea
+            const text = textarea.value.trim();
+            if (!text) {
+                alert('Inserisci almeno una Partita IVA');
+                return;
+            }
+            
+            const partiteIva = text.split('\n')
+                .map(line => line.trim())
+                .filter(line => line.length > 0);
+            
+            if (partiteIva.length === 0) {
+                alert('Inserisci almeno una Partita IVA valida');
+                return;
+            }
+            
+            // Mostra loading
+            btn.disabled = true;
+            loading.style.display = 'block';
+            results.style.display = 'none';
+            
+            try {
+                const response = await fetch('/calcola', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        partite_iva: partiteIva
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.errore) {
+                    throw new Error(data.errore);
+                }
+                
+                mostraRisultati(data.risultati);
+                
+            } catch (error) {
+                alert('Errore: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                loading.style.display = 'none';
+            }
+        }
+        
+        function mostraRisultati(risultati) {
+            const resultsDiv = document.getElementById('results');
+            
+            let html = '<h2>📋 Risultati</h2>';
+            
+            risultati.forEach(risultato => {
+                let cssClass = 'result-item';
+                let amountClass = 'amount';
+                let statusIcon = '';
+                
+                if (risultato.errore) {
+                    cssClass += ' error';
+                    statusIcon = '❌';
+                    amountClass += ' zero';
+                } else if (risultato.stato === 'nessun_aiuto') {
+                    cssClass += ' no-data';
+                    statusIcon = '📊';
+                    amountClass += ' zero';
+                } else if (risultato.stato === 'superata') {
+                    cssClass += ' error';
+                    statusIcon = '🚨';
+                    amountClass += ' high';
+                } else if (risultato.stato === 'attenzione') {
+                    cssClass += ' warning';
+                    statusIcon = '⚠️';
+                    amountClass += ' medium';
+                } else {
+                    cssClass += ' success';
+                    statusIcon = '✅';
+                    amountClass += ' low';
+                }
+                
+                html += `
+                    <div class="${cssClass}">
+                        <div class="piva">${statusIcon} ${risultato.partita_iva}</div>
+                `;
+                
+                if (risultato.errore) {
+                    html += `<div class="error-msg">${risultato.errore}</div>`;
+                } else {
+                    const totaleFormatted = formatEuro(risultato.totale_de_minimis);
+                    const margineFormatted = formatEuro(risultato.margine_rimanente);
+                    
+                    html += `
+                        <div class="${amountClass}">${totaleFormatted}</div>
+                        <div class="details">
+                            📊 ${risultato.numero_aiuti} aiuti trovati<br>
+                            📈 ${risultato.percentuale_utilizzata}% del limite utilizzato<br>
+                            💰 Margine disponibile: ${margineFormatted}<br>
+                            📅 ${risultato.data_ricerca}
+                        </div>
+                    `;
+                }
+                
+                html += '</div>';
+            });
+            
+            resultsDiv.innerHTML = html;
+            resultsDiv.style.display = 'block';
+        }
+        
+        function formatEuro(amount) {
+            return new Intl.NumberFormat('it-IT', {
+                style: 'currency',
+                currency: 'EUR',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(amount);
+        }
+        
+        // Gestione Enter per inviare
+        document.getElementById('partite-iva').addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'Enter') {
+                calcolaDeminimis();
+            }
+        });
+        
+        // Auto-resize textarea
+        const textarea = document.getElementById('partite-iva');
+        textarea.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+    </script>
+</body>
+</html>

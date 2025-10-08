@@ -1,0 +1,92 @@
+{
+  "03254550738": {
+    "totale": 9505.95,
+    "aiuti": 2,
+    "note": "Testato - OK",
+    "data_aggiunta": "16/09/2025"
+  },
+  "04108170962": {
+    "totale": 191018.5,
+    "aiuti": 3,
+    "note": "Testato - Attenzione",
+    "data_aggiunta": "16/09/2025"
+  },
+  "01392840417": {
+    "totale": 68170.58,
+    "aiuti": 8,
+    "note": "Testato - OK",
+    "data_aggiunta": "16/09/2025"
+  },
+  "04898990728": {
+    "totale": 0.0,
+    "aiuti": 0,
+    "note": "Calcolato automaticamente - N/A",
+    "data_aggiunta": "16/09/2025 21:57",
+    "percentuale": 0.0,
+    "margine": 200000.0
+  },
+  "05885800721": {
+    "totale": 0.0,
+    "aiuti": 0,
+    "note": "Calcolato automaticamente - N/A",
+    "data_aggiunta": "17/09/2025 08:46",
+    "percentuale": 0.0,
+    "margine": 200000.0
+  },
+  "02279960419": {
+    "totale": 162224.13,
+    "aiuti": 6,
+    "note": "Calcolato automaticamente - 17/09/2025 09:05",
+    "data_aggiunta": "17/09/2025 09:05",
+    "percentuale": 81.1,
+    "margine": 37775.87
+  },
+  "01139660417": {
+    "totale": 149008.29,
+    "aiuti": 7,
+    "note": "Calcolato automaticamente - 17/09/2025 10:10",
+    "data_aggiunta": "17/09/2025 10:10",
+    "percentuale": 74.5,
+    "margine": 50991.71
+  },
+  "01665310437": {
+    "totale": 4000.0,
+    "aiuti": 10,
+    "note": "Calcolato automaticamente - 17/09/2025 10:54",
+    "data_aggiunta": "17/09/2025 10:54",
+    "percentuale": 2.0,
+    "margine": 196000.0
+  },
+  "02267460448": {
+    "totale": 104176.9,
+    "aiuti": 14,
+    "note": "Calcolato automaticamente - 17/09/2025 11:08",
+    "data_aggiunta": "17/09/2025 11:08",
+    "percentuale": 52.1,
+    "margine": 95823.1
+  },
+  "02853900989": {
+    "totale": 0,
+    "aiuti": 0,
+    "note": "Calcolato automaticamente - 17/09/2025 11:12",
+    "data_aggiunta": "17/09/2025 11:12",
+    "percentuale": 0.0,
+    "margine": 200000.0
+  },
+  "01464980174": {
+    "totale": 185304.3,
+    "aiuti": 10,
+    "note": "Calcolato automaticamente - 17/09/2025 11:36",
+    "data_aggiunta": "17/09/2025 11:36",
+    "percentuale": 61.8,
+    "margine": 114695.7
+  },
+  "07074690723": {
+    "totale": 78726.96,
+    "aiuti": 8,
+    "note": "Calcolato automaticamente - 17/09/2025 12:04",
+    "data_aggiunta": "17/09/2025 12:04",
+    "percentuale": 26.2,
+    "margine": 221273.04
+  }
+}

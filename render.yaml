@@ -1,0 +1,48 @@
+# Configurazione Render per RNA De Minimis App
+# ============================================
+# 
+# Questo file configura il deployment automatico su Render.com
+# 
+# Autore: Pigreco Team
+# Data: Ottobre 2025
+
+services:
+  # Servizio Web principale
+  - type: web
+    name: rna-deminimis-app
+    env: python
+    region: frankfurt  # Regione europea per migliori performance in Italia
+    plan: free  # Piano gratuito - cambia in 'starter' se serve più potenza
+    
+    # Configurazione build
+    buildCommand: |
+      pip install --upgrade pip
+      pip install -r requirements.txt
+    
+    # Comando per avviare l'app
+    startCommand: gunicorn --bind 0.0.0.0:$PORT web_finale:app
+    
+    # Configurazione ambiente
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: FLASK_DEBUG
+        value: "False"
+      - key: PYTHONPATH
+        value: /opt/render/project/src
+    
+    # Configurazione auto-deploy
+    autoDeploy: true
+    
+    # Health check
+    healthCheckPath: /
+    
+    # Configurazione domini (opzionale)
+    # domains:
+    #   - rna-deminimis.onrender.com
+
+# Configurazione database (se necessario in futuro)
+# databases:
+#   - name: rna-database
+#     databaseName: rna_deminimis
+#     user: rna_user

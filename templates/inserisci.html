@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inserisci P.IVA</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a1a;
+            color: #e4e4e4;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background: #2a2a2a;
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            color: #4a9eff;
+            font-size: 2em;
+        }
+
+        .subtitle {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #a0a0a0;
+            font-size: 1em;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 10px;
+            color: #c9c9c9;
+            font-weight: 500;
+            font-size: 1.1em;
+        }
+
+        .form-group textarea {
+            width: 100%;
+            height: 200px;
+            padding: 15px;
+            background: #3c3c3c;
+            border: 2px solid #555;
+            border-radius: 10px;
+            color: #e4e4e4;
+            font-size: 16px;
+            font-family: 'Courier New', monospace;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #4a9eff;
+            box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.2);
+        }
+
+        .help-text {
+            margin-top: 8px;
+            font-size: 0.9em;
+            color: #888;
+            line-height: 1.4;
+        }
+
+        .btn {
+            width: 100%;
+            background: linear-gradient(135deg, #4a9eff 0%, #0066cc 100%);
+            border: none;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: 600;
+            transition: all 0.3s;
+            margin-bottom: 20px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(74, 158, 255, 0.4);
+        }
+
+        .btn:disabled {
+            background: #555;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .result {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-weight: 500;
+            display: none;
+        }
+
+        .result.success {
+            background: rgba(46, 213, 115, 0.2);
+            border: 2px solid #2ed573;
+            color: #2ed573;
+        }
+
+        .result.error {
+            background: rgba(255, 71, 87, 0.2);
+            border: 2px solid #ff4757;
+            color: #ff4757;
+        }
+
+        .risultati-grid {
+            display: grid;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .risultato-item {
+            background: #333;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #4a9eff;
+        }
+
+        .risultato-item.warning {
+            border-left-color: #ffa502;
+            background: rgba(255, 165, 2, 0.1);
+        }
+
+        .risultato-item.danger {
+            border-left-color: #ff4757;
+            background: rgba(255, 71, 87, 0.1);
+        }
+
+        .dettagli-aiuti {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #4a4a4a;
+        }
+
+        .dettagli-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .dettagli-aiuti h4 {
+            color: #4a9eff;
+            margin: 0;
+            font-size: 1.1em;
+        }
+
+        .copy-markdown-btn {
+            background: #4a9eff;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: background 0.3s;
+        }
+
+        .copy-markdown-btn:hover {
+            background: #357abd;
+        }
+
+        .tabella-container {
+            overflow-x: auto;
+            border-radius: 8px;
+            background: rgba(74, 158, 255, 0.05);
+        }
+
+        .tabella-aiuti {
+            width: 100%;
+            border-collapse: collapse;
+            background: transparent;
+        }
+
+        .tabella-aiuti th {
+            background: rgba(74, 158, 255, 0.2);
+            color: #4a9eff;
+            padding: 12px 8px;
+            text-align: left;
+            font-weight: bold;
+            font-size: 0.9em;
+            border-bottom: 2px solid #4a9eff;
+        }
+
+        .tabella-aiuti td {
+            padding: 12px 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            vertical-align: top;
+        }
+
+        .tabella-aiuti tr:hover {
+            background: rgba(74, 158, 255, 0.1);
+        }
+
+        .data-cell {
+            color: #4a9eff;
+            font-weight: bold;
+            font-size: 0.9em;
+            white-space: nowrap;
+            width: 120px;
+        }
+
+        .importo-cell {
+            color: #ffffff;
+            font-weight: bold;
+            font-size: 1.1em;
+            text-align: right;
+            white-space: nowrap;
+            width: 120px;
+        }
+
+        .titolo-cell {
+            color: #e4e4e4;
+            font-size: 0.85em;
+            line-height: 1.4;
+            max-width: 400px;
+            word-wrap: break-word;
+        }
+
+        .risultato-header {
+            font-family: 'Courier New', monospace;
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #4a9eff;
+            margin-bottom: 10px;
+        }
+
+        .risultato-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            font-size: 0.9em;
+        }
+
+        .detail-item {
+            text-align: center;
+        }
+
+        .detail-value {
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-bottom: 3px;
+        }
+
+        .detail-label {
+            color: #a0a0a0;
+            font-size: 0.8em;
+        }
+
+        .counter {
+            text-align: center;
+            padding: 15px;
+            background: #333;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .counter-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #4a9eff;
+        }
+
+        .counter-label {
+            color: #a0a0a0;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 10px;
+        }
+
+        .spinner {
+            border: 3px solid #333;
+            border-top: 3px solid #4a9eff;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .example {
+            background: #333;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            border-left: 4px solid #4a9eff;
+        }
+
+        .example h4 {
+            color: #4a9eff;
+            margin-bottom: 10px;
+        }
+
+        .example code {
+            font-family: 'Courier New', monospace;
+            background: #2a2a2a;
+            padding: 2px 5px;
+            border-radius: 3px;
+            color: #ffa502;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📝 Calcola De Minimis</h1>
+        <p class="subtitle">Inserisci P.IVA e calcola automaticamente il de minimis</p>
+        
+        <div class="counter" id="counter">
+            <div class="counter-value" id="counter-value">-</div>
+            <div class="counter-label">P.IVA nel database</div>
+        </div>
+        
+        <div id="result" class="result"></div>
+        
+        <form id="piva-form">
+            <div class="form-group">
+                <label for="partite-iva">Partite IVA:</label>
+                <textarea 
+                    id="partite-iva" 
+                    placeholder="03254550738
+04108170962
+01392840417"
+                    required
+                ></textarea>
+            </div>
+            
+            <button type="submit" class="btn" id="submit-btn">
+                🧮 Calcola De Minimis
+            </button>
+        </form>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Calcolando de minimis...</p>
+        </div>
+        
+        <div id="risultati-container" style="display: none;">
+            <div class="risultati-grid" id="risultati-grid"></div>
+        </div>
+        
+    </div>
+
+    <script>
+        let form = document.getElementById('piva-form');
+        let submitBtn = document.getElementById('submit-btn');
+        let loading = document.getElementById('loading');
+        let result = document.getElementById('result');
+        let counterValue = document.getElementById('counter-value');
+
+        // Carica contatore all'avvio
+        caricaContatore();
+
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            let textarea = document.getElementById('partite-iva');
+            let testo = textarea.value.trim();
+            
+            if (!testo) {
+                mostraRisultato('Inserisci almeno una P.IVA', 'error');
+                return;
+            }
+            
+            // Divide per righe e pulisce
+            let partiteIva = testo.split('\n')
+                .map(p => p.trim())
+                .filter(p => p.length > 0);
+            
+            if (partiteIva.length === 0) {
+                mostraRisultato('Nessuna P.IVA valida trovata', 'error');
+                return;
+            }
+            
+            // Mostra loading
+            submitBtn.disabled = true;
+            loading.style.display = 'block';
+            result.style.display = 'none';
+            
+            try {
+                let response = await fetch('/aggiungi', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ partite_iva: partiteIva })
+                });
+                
+                let data = await response.json();
+                
+                if (response.ok) {
+                    let messaggio = '';
+                    
+                    if (data.aggiunte > 0) {
+                        messaggio += `✅ ${data.aggiunte} P.IVA aggiunte con successo!`;
+                        
+                        // Mostra risultati de minimis
+                        if (data.risultati && data.risultati.length > 0) {
+                            mostraRisultatiDeMinimis(data.risultati);
+                        }
+                    }
+                    
+                    if (data.errori.length > 0) {
+                        if (messaggio) messaggio += '\n\n';
+                        messaggio += `⚠️ Errori:\n${data.errori.join('\n')}`;
+                    }
+                    
+                    if (data.aggiunte > 0) {
+                        mostraRisultato(messaggio, 'success');
+                        textarea.value = ''; // Pulisci il form
+                        caricaContatore(); // Aggiorna contatore
+                    } else {
+                        mostraRisultato(messaggio, 'error');
+                    }
+                } else {
+                    mostraRisultato(data.errore || 'Errore sconosciuto', 'error');
+                }
+            } catch (error) {
+                mostraRisultato('Errore di connessione al server', 'error');
+            } finally {
+                submitBtn.disabled = false;
+                loading.style.display = 'none';
+            }
+        });
+
+        function mostraRisultato(messaggio, tipo) {
+            result.textContent = messaggio;
+            result.className = `result ${tipo}`;
+            result.style.display = 'block';
+            
+            // Scroll verso il risultato
+            result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        async function caricaContatore() {
+            try {
+                let response = await fetch('/count');
+                let data = await response.json();
+                counterValue.textContent = data.totale;
+            } catch (error) {
+                counterValue.textContent = '?';
+            }
+        }
+
+        // Validazione P.IVA in tempo reale
+        document.getElementById('partite-iva').addEventListener('input', function(e) {
+            // Rimuovi caratteri non numerici eccetto newline
+            let value = e.target.value;
+            let lines = value.split('\n');
+            let cleanedLines = lines.map(line => line.replace(/[^0-9]/g, ''));
+            e.target.value = cleanedLines.join('\n');
+        });
+
+        // Auto-resize textarea
+        document.getElementById('partite-iva').addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.max(200, this.scrollHeight) + 'px';
+        });
+
+        function mostraRisultatiDeMinimis(risultati) {
+            const container = document.getElementById('risultati-container');
+            const grid = document.getElementById('risultati-grid');
+            
+            grid.innerHTML = risultati.map(ris => {
+                let cssClass = 'risultato-item';
+                let statusIcon = '';
+                
+                if (ris.percentuale > 100) {
+                    cssClass += ' danger';
+                    statusIcon = '🚨';
+                } else if (ris.percentuale > 80) {
+                    cssClass += ' warning';
+                    statusIcon = '⚠️';
+                } else {
+                    statusIcon = '✅';
+                }
+                
+                return `
+                    <div class="${cssClass}">
+                        <div class="risultato-header">${statusIcon} ${ris.piva}</div>
+                        <div class="risultato-details">
+                            <div class="detail-item">
+                                <div class="detail-value">${formatEuro(ris.totale)}</div>
+                                <div class="detail-label">De Minimis</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-value">${ris.aiuti}</div>
+                                <div class="detail-label">Aiuti</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-value">${ris.percentuale.toFixed(1)}%</div>
+                                <div class="detail-label">Utilizzato (€300K)</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-value">${formatEuro(ris.margine)}</div>
+                                <div class="detail-label">Margine</div>
+                            </div>
+                        </div>
+                        ${ris.dettagli_aiuti && ris.dettagli_aiuti.length > 0 ? `
+                            <div class="dettagli-aiuti">
+                                <div class="dettagli-header">
+                                    <h4>📋 Dettaglio Aiuti:</h4>
+                                    <button class="copy-markdown-btn" onclick="copiaMarkdown('${ris.piva}', ${JSON.stringify(ris.dettagli_aiuti).replace(/"/g, '&quot;')}, this)">
+                                        📋 Copia Markdown
+                                    </button>
+                                </div>
+                                <div class="tabella-container">
+                                    <table class="tabella-aiuti">
+                                        <thead>
+                                            <tr>
+                                                <th>Data Concessione</th>
+                                                <th>Importo</th>
+                                                <th>Titolo Misura</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${ris.dettagli_aiuti.map(aiuto => `
+                                                <tr>
+                                                    <td class="data-cell">${aiuto.data_concessione}</td>
+                                                    <td class="importo-cell">${formatEuro(aiuto.importo)}</td>
+                                                    <td class="titolo-cell">${aiuto.titolo_misura}</td>
+                                                </tr>
+                                            `).join('')}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+            
+            container.style.display = 'block';
+            container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function formatEuro(amount) {
+            return new Intl.NumberFormat('it-IT', {
+                style: 'currency',
+                currency: 'EUR',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(amount);
+        }
+
+        function copiaMarkdown(piva, dettagliAiuti, button) {
+            // Costruisci markdown per ChatGPT
+            let markdown = `# Analisi De Minimis - P.IVA ${piva}\n\n`;
+            
+            // Statistiche
+            const totale = dettagliAiuti.reduce((sum, aiuto) => sum + aiuto.importo, 0);
+            markdown += `## 📊 Riepilogo\n`;
+            markdown += `- **P.IVA**: ${piva}\n`;
+            markdown += `- **Totale De Minimis**: ${formatEuro(totale)}\n`;
+            markdown += `- **Numero Aiuti**: ${dettagliAiuti.length}\n`;
+            markdown += `- **Soglia**: €300.000 (Regime Generale De Minimis)\n\n`;
+            
+            // Tabella dettagli
+            markdown += `## 📋 Dettaglio Aiuti\n\n`;
+            markdown += `| Data Concessione | Importo | Titolo Misura |\n`;
+            markdown += `|------------------|---------|---------------|\n`;
+            
+            dettagliAiuti.forEach(aiuto => {
+                const importoFormatted = formatEuro(aiuto.importo);
+                const titolo = aiuto.titolo_misura.replace(/\|/g, '-').substring(0, 80);
+                markdown += `| ${aiuto.data_concessione} | ${importoFormatted} | ${titolo} |\n`;
+            });
+            
+            markdown += `\n---\n*Dati estratti automaticamente dal sistema RNA De Minimis*`;
+            
+            // Copia negli appunti
+            navigator.clipboard.writeText(markdown).then(() => {
+                // Mostra feedback
+                const originalText = button.innerHTML;
+                button.innerHTML = '✅ Copiato!';
+                button.style.background = '#27ae60';
+                setTimeout(() => {
+                    button.innerHTML = originalText;
+                    button.style.background = '#4a9eff';
+                }, 2000);
+            }).catch(err => {
+                alert('Errore nella copia: ' + err);
+            });
+        }
+    </script>
+</body>
+</html>

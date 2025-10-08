@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestione P.IVA - RNA De Minimis</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d30 100%);
+            color: #e4e4e4;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 30px;
+            background: rgba(42, 42, 46, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            color: #4a9eff;
+            font-size: 2.5em;
+            font-weight: 600;
+        }
+
+        .subtitle {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #a0a0a0;
+            font-size: 1.1em;
+        }
+
+        .actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .action-card {
+            background: #333;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #4a9eff;
+            transition: transform 0.2s;
+        }
+
+        .action-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(74, 158, 255, 0.3);
+        }
+
+        .action-card h3 {
+            color: #4a9eff;
+            margin-bottom: 10px;
+            font-size: 1.3em;
+        }
+
+        .action-card p {
+            color: #a0a0a0;
+            margin-bottom: 15px;
+            line-height: 1.4;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #4a9eff 0%, #0066cc 100%);
+            border: none;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            width: 100%;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 10px rgba(74, 158, 255, 0.4);
+        }
+
+        .btn.success {
+            background: linear-gradient(135deg, #2ed573 0%, #17a2b8 100%);
+        }
+
+        .btn.danger {
+            background: linear-gradient(135deg, #ff4757 0%, #ff3838 100%);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+        }
+
+        .modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #2a2a2a;
+            padding: 30px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7);
+        }
+
+        .modal h2 {
+            color: #4a9eff;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #c9c9c9;
+            font-weight: 500;
+        }
+
+        .form-group input, .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            background: #3c3c3c;
+            border: 1px solid #555;
+            border-radius: 8px;
+            color: #e4e4e4;
+            font-size: 16px;
+        }
+
+        .form-group input:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #4a9eff;
+            box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.2);
+        }
+
+        .form-group input[type="text"] {
+            font-family: 'Courier New', monospace;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .form-actions .btn {
+            flex: 1;
+        }
+
+        .close {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            color: #888;
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: #fff;
+        }
+
+        .lista-piva {
+            margin-top: 30px;
+        }
+
+        .lista-header {
+            background: #4a9eff;
+            color: white;
+            padding: 15px;
+            border-radius: 8px 8px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .piva-grid {
+            display: grid;
+            gap: 15px;
+            margin-top: 0;
+        }
+
+        .piva-item {
+            background: #333;
+            border-radius: 0 0 8px 8px;
+            padding: 20px;
+            border-left: 4px solid #4a9eff;
+            transition: all 0.2s;
+        }
+
+        .piva-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .piva-item.error {
+            border-left-color: #ff4757;
+            background: rgba(255, 71, 87, 0.1);
+        }
+
+        .piva-item.warning {
+            border-left-color: #ffa502;
+            background: rgba(255, 165, 2, 0.1);
+        }
+
+        .piva-item.success {
+            border-left-color: #2ed573;
+            background: rgba(46, 213, 115, 0.1);
+        }
+
+        .piva-item.no-data {
+            border-left-color: #747d8c;
+            background: rgba(116, 125, 140, 0.1);
+        }
+
+        .piva-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .piva-number {
+            font-family: 'Courier New', monospace;
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #4a9eff;
+        }
+
+        .piva-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .piva-actions button {
+            padding: 5px 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .piva-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .detail-item {
+            text-align: center;
+        }
+
+        .detail-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .detail-value.zero { color: #747d8c; }
+        .detail-value.low { color: #2ed573; }
+        .detail-value.medium { color: #ffa502; }
+        .detail-value.high { color: #ff4757; }
+
+        .detail-label {
+            font-size: 0.9em;
+            color: #a0a0a0;
+        }
+
+        .piva-note {
+            background: #2a2a2a;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-style: italic;
+            color: #a0a0a0;
+            font-size: 0.9em;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #4a9eff;
+        }
+
+        .spinner {
+            border: 3px solid #333;
+            border-top: 3px solid #4a9eff;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        .alert.success {
+            background: rgba(46, 213, 115, 0.2);
+            border: 1px solid #2ed573;
+            color: #2ed573;
+        }
+
+        .alert.error {
+            background: rgba(255, 71, 87, 0.2);
+            border: 1px solid #ff4757;
+            color: #ff4757;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-item {
+            background: #333;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #4a9eff;
+        }
+
+        .stat-label {
+            color: #a0a0a0;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Gestione P.IVA</h1>
+        <p class="subtitle">Aggiungi, modifica ed elimina P.IVA dal database RNA De Minimis</p>
+        
+        <div class="actions">
+            <div class="action-card">
+                <h3>➕ Aggiungi P.IVA</h3>
+                <p>Inserisci una nuova P.IVA con i suoi dati de minimis nel database</p>
+                <button class="btn" onclick="apriModal('aggiungi')">Aggiungi Nuova</button>
+            </div>
+            
+            <div class="action-card">
+                <h3>📋 Lista P.IVA</h3>
+                <p>Visualizza tutte le P.IVA nel database con i relativi dettagli</p>
+                <button class="btn" onclick="caricaLista()">Mostra Lista</button>
+            </div>
+            
+            <div class="action-card">
+                <h3>🔍 Cerca P.IVA</h3>
+                <p>Cerca una P.IVA specifica per visualizzare i suoi dati</p>
+                <button class="btn" onclick="apriModal('cerca')">Cerca</button>
+            </div>
+        </div>
+        
+        <div id="alert-container"></div>
+        
+        <div class="lista-piva" id="lista-container" style="display: none;">
+            <div class="lista-header">
+                <h2>📊 Database P.IVA</h2>
+                <div class="stats" id="stats-container"></div>
+            </div>
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Caricamento in corso...</p>
+            </div>
+            <div class="piva-grid" id="piva-grid"></div>
+        </div>
+    </div>
+
+    <!-- Modal Aggiungi/Modifica -->
+    <div id="modal-form" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="chiudiModal()">&times;</span>
+            <h2 id="modal-title">Aggiungi P.IVA</h2>
+            
+            <form id="piva-form">
+                <div class="form-group">
+                    <label for="piva">Partita IVA (11 cifre):</label>
+                    <input type="text" id="piva" maxlength="11" placeholder="03254550738" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="totale">Totale De Minimis (€):</label>
+                    <input type="number" id="totale" step="0.01" min="0" placeholder="9505.95" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="aiuti">Numero Aiuti:</label>
+                    <input type="number" id="aiuti" min="0" placeholder="2">
+                </div>
+                
+                <div class="form-group">
+                    <label for="note">Note:</label>
+                    <textarea id="note" rows="3" placeholder="Inserisci note aggiuntive..."></textarea>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn" onclick="chiudiModal()">Annulla</button>
+                    <button type="submit" class="btn success" id="submit-btn">Aggiungi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Cerca -->
+    <div id="modal-cerca" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="chiudiModal()">&times;</span>
+            <h2>🔍 Cerca P.IVA</h2>
+            
+            <div class="form-group">
+                <label for="cerca-piva">Partita IVA:</label>
+                <input type="text" id="cerca-piva" maxlength="11" placeholder="03254550738">
+            </div>
+            
+            <div class="form-actions">
+                <button type="button" class="btn" onclick="chiudiModal()">Annulla</button>
+                <button type="button" class="btn" onclick="cercaPiva()">Cerca</button>
+            </div>
+            
+            <div id="risultato-cerca" style="margin-top: 20px;"></div>
+        </div>
+    </div>
+
+    <script>
+        let modalCorrente = null;
+        let pivaInModifica = null;
+
+        function apriModal(tipo) {
+            if (tipo === 'aggiungi') {
+                document.getElementById('modal-title').textContent = 'Aggiungi P.IVA';
+                document.getElementById('submit-btn').textContent = 'Aggiungi';
+                document.getElementById('piva-form').reset();
+                document.getElementById('piva').disabled = false;
+                pivaInModifica = null;
+                modalCorrente = 'modal-form';
+            } else if (tipo === 'cerca') {
+                modalCorrente = 'modal-cerca';
+                document.getElementById('risultato-cerca').innerHTML = '';
+            }
+            
+            document.getElementById(modalCorrente).style.display = 'block';
+        }
+
+        function chiudiModal() {
+            if (modalCorrente) {
+                document.getElementById(modalCorrente).style.display = 'none';
+                modalCorrente = null;
+            }
+        }
+
+        function mostraAlert(messaggio, tipo = 'success') {
+            const container = document.getElementById('alert-container');
+            const alert = document.createElement('div');
+            alert.className = `alert ${tipo}`;
+            alert.textContent = messaggio;
+            
+            container.innerHTML = '';
+            container.appendChild(alert);
+            
+            setTimeout(() => {
+                container.innerHTML = '';
+            }, 5000);
+        }
+
+        document.getElementById('piva-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const piva = document.getElementById('piva').value.trim();
+            const totale = parseFloat(document.getElementById('totale').value);
+            const aiuti = parseInt(document.getElementById('aiuti').value) || 0;
+            const note = document.getElementById('note').value.trim();
+            
+            if (!/^\d{11}$/.test(piva)) {
+                mostraAlert('P.IVA deve essere di 11 cifre', 'error');
+                return;
+            }
+            
+            const endpoint = pivaInModifica ? '/modifica' : '/aggiungi';
+            const azione = pivaInModifica ? 'Modifica' : 'Aggiunta';
+            
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ piva, totale, aiuti, note })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    mostraAlert(result.messaggio, 'success');
+                    chiudiModal();
+                    if (document.getElementById('lista-container').style.display !== 'none') {
+                        caricaLista();
+                    }
+                } else {
+                    mostraAlert(result.errore, 'error');
+                }
+            } catch (error) {
+                mostraAlert('Errore di connessione', 'error');
+            }
+        });
+
+        async function caricaLista() {
+            const container = document.getElementById('lista-container');
+            const loading = document.getElementById('loading');
+            const grid = document.getElementById('piva-grid');
+            
+            container.style.display = 'block';
+            loading.style.display = 'block';
+            grid.innerHTML = '';
+            
+            try {
+                const response = await fetch('/lista');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    mostraStats(data);
+                    mostraLista(data.piva_list);
+                } else {
+                    mostraAlert('Errore nel caricamento della lista', 'error');
+                }
+            } catch (error) {
+                mostraAlert('Errore di connessione', 'error');
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        function mostraStats(data) {
+            const stats = document.getElementById('stats-container');
+            const totale = data.totale;
+            const superati = data.piva_list.filter(p => p.stato === 'superata').length;
+            const attenzione = data.piva_list.filter(p => p.stato === 'attenzione').length;
+            const ok = data.piva_list.filter(p => p.stato === 'ok').length;
+            
+            stats.innerHTML = `
+                <div class="stat-item">
+                    <div class="stat-value">${totale}</div>
+                    <div class="stat-label">Totale P.IVA</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" style="color: #ff4757;">${superati}</div>
+                    <div class="stat-label">Soglia Superata</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" style="color: #ffa502;">${attenzione}</div>
+                    <div class="stat-label">Attenzione</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" style="color: #2ed573;">${ok}</div>
+                    <div class="stat-label">OK</div>
+                </div>
+            `;
+        }
+
+        function mostraLista(pivaList) {
+            const grid = document.getElementById('piva-grid');
+            
+            if (pivaList.length === 0) {
+                grid.innerHTML = '<p style="text-align: center; color: #a0a0a0;">Nessuna P.IVA nel database</p>';
+                return;
+            }
+            
+            grid.innerHTML = pivaList.map(piva => {
+                let cssClass = 'piva-item';
+                let statusIcon = '';
+                let amountClass = 'detail-value';
+                
+                if (piva.stato === 'superata') {
+                    cssClass += ' error';
+                    statusIcon = '🚨';
+                    amountClass += ' high';
+                } else if (piva.stato === 'attenzione') {
+                    cssClass += ' warning';
+                    statusIcon = '⚠️';
+                    amountClass += ' medium';
+                } else if (piva.stato === 'ok') {
+                    cssClass += ' success';
+                    statusIcon = '✅';
+                    amountClass += ' low';
+                } else {
+                    cssClass += ' no-data';
+                    statusIcon = '📊';
+                    amountClass += ' zero';
+                }
+                
+                return `
+                    <div class="${cssClass}">
+                        <div class="piva-header">
+                            <div class="piva-number">${statusIcon} ${piva.partita_iva}</div>
+                            <div class="piva-actions">
+                                <button style="background: #ffa502; color: white;" onclick="modificaPiva('${piva.partita_iva}')">✏️</button>
+                                <button style="background: #ff4757; color: white;" onclick="eliminaPiva('${piva.partita_iva}')">🗑️</button>
+                            </div>
+                        </div>
+                        
+                        <div class="piva-details">
+                            <div class="detail-item">
+                                <div class="${amountClass}">${formatEuro(piva.totale_de_minimis)}</div>
+                                <div class="detail-label">Totale De Minimis</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-value">${piva.numero_aiuti}</div>
+                                <div class="detail-label">Aiuti</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-value">${piva.percentuale_utilizzata}%</div>
+                                <div class="detail-label">Utilizzato</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-value">${formatEuro(piva.margine_rimanente)}</div>
+                                <div class="detail-label">Margine</div>
+                            </div>
+                        </div>
+                        
+                        ${piva.note ? `<div class="piva-note">📝 ${piva.note}</div>` : ''}
+                        <div style="font-size: 0.8em; color: #666; margin-top: 10px;">
+                            Aggiunta: ${piva.data_aggiunta}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function modificaPiva(piva) {
+            try {
+                const response = await fetch(`/calcola/${piva}`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('modal-title').textContent = 'Modifica P.IVA';
+                    document.getElementById('submit-btn').textContent = 'Modifica';
+                    document.getElementById('piva').value = data.partita_iva;
+                    document.getElementById('piva').disabled = true;
+                    document.getElementById('totale').value = data.totale_de_minimis;
+                    document.getElementById('aiuti').value = data.numero_aiuti;
+                    document.getElementById('note').value = data.note;
+                    
+                    pivaInModifica = piva;
+                    modalCorrente = 'modal-form';
+                    document.getElementById('modal-form').style.display = 'block';
+                } else {
+                    mostraAlert('Errore nel caricamento dei dati', 'error');
+                }
+            } catch (error) {
+                mostraAlert('Errore di connessione', 'error');
+            }
+        }
+
+        async function eliminaPiva(piva) {
+            if (!confirm(`Sei sicuro di voler eliminare la P.IVA ${piva}?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/elimina', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ piva })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    mostraAlert(result.messaggio, 'success');
+                    caricaLista();
+                } else {
+                    mostraAlert(result.errore, 'error');
+                }
+            } catch (error) {
+                mostraAlert('Errore di connessione', 'error');
+            }
+        }
+
+        async function cercaPiva() {
+            const piva = document.getElementById('cerca-piva').value.trim();
+            const risultato = document.getElementById('risultato-cerca');
+            
+            if (!/^\d{11}$/.test(piva)) {
+                risultato.innerHTML = '<div class="alert error">P.IVA deve essere di 11 cifre</div>';
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/calcola/${piva}`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    let statusIcon = '';
+                    let statusColor = '';
+                    
+                    if (data.stato === 'superata') {
+                        statusIcon = '🚨';
+                        statusColor = '#ff4757';
+                    } else if (data.stato === 'attenzione') {
+                        statusIcon = '⚠️';
+                        statusColor = '#ffa502';
+                    } else if (data.stato === 'ok') {
+                        statusIcon = '✅';
+                        statusColor = '#2ed573';
+                    } else {
+                        statusIcon = '📊';
+                        statusColor = '#747d8c';
+                    }
+                    
+                    risultato.innerHTML = `
+                        <div style="background: #333; padding: 20px; border-radius: 8px; border-left: 4px solid ${statusColor};">
+                            <h3 style="color: ${statusColor}; margin-bottom: 15px;">${statusIcon} ${data.partita_iva}</h3>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                <div>
+                                    <strong>Totale:</strong> ${formatEuro(data.totale_de_minimis)}<br>
+                                    <strong>Aiuti:</strong> ${data.numero_aiuti}<br>
+                                    <strong>Utilizzato:</strong> ${data.percentuale_utilizzata}%
+                                </div>
+                                <div>
+                                    <strong>Margine:</strong> ${formatEuro(data.margine_rimanente)}<br>
+                                    <strong>Aggiunta:</strong> ${data.data_aggiunta}
+                                </div>
+                            </div>
+                            ${data.note ? `<div style="margin-top: 15px; font-style: italic; color: #a0a0a0;">📝 ${data.note}</div>` : ''}
+                        </div>
+                    `;
+                } else {
+                    const error = await response.json();
+                    risultato.innerHTML = `<div class="alert error">${error.errore}</div>`;
+                }
+            } catch (error) {
+                risultato.innerHTML = '<div class="alert error">Errore di connessione</div>';
+            }
+        }
+
+        function formatEuro(amount) {
+            return new Intl.NumberFormat('it-IT', {
+                style: 'currency',
+                currency: 'EUR',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(amount);
+        }
+
+        // Validazione P.IVA in tempo reale
+        document.addEventListener('input', function(e) {
+            if (e.target.id === 'piva' || e.target.id === 'cerca-piva') {
+                e.target.value = e.target.value.replace(/[^0-9]/g, '');
+            }
+        });
+
+        // Chiudi modal cliccando fuori
+        window.addEventListener('click', function(e) {
+            if (e.target.classList.contains('modal')) {
+                chiudiModal();
+            }
+        });
+
+        // Carica lista all'avvio
+        window.addEventListener('load', function() {
+            caricaLista();
+        });
+    </script>
+</body>
+</html>

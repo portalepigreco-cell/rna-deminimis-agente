@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧮 De Minimis Aggregato | Sistema Integrato</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            line-height: 1.6;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px; /* Aumentato per contenere più informazioni */
+            background: #2a2a2a;
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .logo {
+            display: block;
+            margin: 0 auto 16px auto;
+            height: 48px;
+            width: auto;
+            opacity: 0.95;
+            filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3));
+        }
+
+        .logo-svg {
+            display: block;
+            margin: 0 auto 16px auto;
+            height: 48px;
+            width: 120px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #4a9eff, #0066cc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header .subtitle {
+            color: #b0b0b0;
+            font-size: 1.1em;
+            margin-bottom: 10px;
+        }
+
+        .header .features {
+            color: #4a9eff;
+            font-size: 0.95em;
+            margin-top: 15px;
+        }
+
+        .input-section {
+            margin-bottom: 30px;
+        }
+
+        .calcolo-mode {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .calcolo-mode h3 {
+            color: #4a9eff;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .calcolo-mode .description {
+            color: #b0b0b0;
+            font-size: 0.9em;
+            margin-bottom: 20px;
+            line-height: 1.4;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 15px;
+            align-items: stretch;
+        }
+
+        .piva-input {
+            flex: 1;
+            padding: 15px 20px;
+            font-size: 1.1em;
+            border: 2px solid #4a4a4a;
+            border-radius: 10px;
+            background: #3a3a3a;
+            color: #ffffff;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .piva-input:focus {
+            border-color: #4a9eff;
+            box-shadow: 0 0 10px rgba(74, 158, 255, 0.3);
+        }
+
+        .calcola-btn {
+            padding: 15px 30px;
+            font-size: 1.1em;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            white-space: nowrap;
+            font-weight: bold;
+        }
+
+        .btn-aggregato {
+            background: linear-gradient(45deg, #28a745, #20c997);
+        }
+
+        .btn-aggregato:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
+        }
+
+        .btn-singolo {
+            background: linear-gradient(45deg, #ffc107, #fd7e14);
+        }
+
+        .btn-singolo:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 193, 7, 0.4);
+        }
+
+        .calcola-btn:disabled {
+            background: #666 !important;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            text-align: center;
+            margin: 30px 0;
+            color: #4a9eff;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 3px solid #4a4a4a;
+            border-top: 3px solid #4a9eff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .risultati {
+            display: none;
+            margin-top: 30px;
+        }
+
+        .metodo-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .metodo-singolo {
+            background: rgba(255, 193, 7, 0.2);
+            color: #ffc107;
+            border: 1px solid #ffc107;
+        }
+
+        .metodo-aggregato {
+            background: rgba(40, 167, 69, 0.2);
+            color: #28a745;
+            border: 1px solid #28a745;
+        }
+
+        .riepilogo-gruppo {
+            background: rgba(74, 158, 255, 0.1);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(74, 158, 255, 0.3);
+        }
+
+        .riepilogo-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .riepilogo-title {
+            color: #4a9eff;
+            font-size: 1.3em;
+            font-weight: bold;
+        }
+
+        .copy-btn {
+            background: #4a9eff;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: background 0.3s;
+        }
+
+        .copy-btn:hover {
+            background: #357abd;
+        }
+
+        .totale-gruppo {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #b0b0b0;
+            font-size: 0.9em;
+        }
+
+        .stato-verde .stat-value { color: #28a745; }
+        .stato-giallo .stat-value { color: #ffc107; }
+        .stato-rosso .stat-value { color: #dc3545; }
+
+        .aziende-lista {
+            margin-top: 30px;
+        }
+
+        .azienda-card {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 4px solid #4a9eff;
+        }
+
+        .azienda-principale {
+            border-left-color: #28a745;
+            background: rgba(40, 167, 69, 0.05);
+        }
+
+        .azienda-associata {
+            border-left-color: #4a9eff;
+            background: rgba(74, 158, 255, 0.05);
+        }
+
+        .azienda-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+
+        .azienda-info h4 {
+            color: #ffffff;
+            font-size: 1.2em;
+            margin-bottom: 5px;
+        }
+
+        .azienda-details {
+            color: #b0b0b0;
+            font-size: 0.9em;
+        }
+
+        .azienda-totale {
+            text-align: right;
+        }
+
+        .azienda-totale .valore {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #4a9eff;
+        }
+
+        .azienda-totale .aiuti {
+            color: #b0b0b0;
+            font-size: 0.9em;
+        }
+
+        .dettagli-aiuti {
+            margin-top: 15px;
+        }
+
+        .dettagli-aiuti h5 {
+            color: #4a9eff;
+            margin-bottom: 10px;
+            font-size: 1em;
+        }
+
+        .tabella-container {
+            overflow-x: auto;
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.2);
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .tabella-aiuti {
+            width: 100%;
+            border-collapse: collapse;
+            background: transparent;
+        }
+
+        .tabella-aiuti th {
+            background: rgba(74, 158, 255, 0.2);
+            color: #4a9eff;
+            padding: 10px 8px;
+            text-align: left;
+            font-weight: bold;
+            font-size: 0.85em;
+            border-bottom: 2px solid #4a9eff;
+            position: sticky;
+            top: 0;
+        }
+
+        .tabella-aiuti td {
+            padding: 10px 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            vertical-align: top;
+            font-size: 0.85em;
+        }
+
+        .tabella-aiuti tr:hover {
+            background: rgba(74, 158, 255, 0.1);
+        }
+
+        .data-cell {
+            color: #4a9eff;
+            font-weight: bold;
+            white-space: nowrap;
+            width: 100px;
+        }
+
+        .importo-cell {
+            color: #ffffff;
+            font-weight: bold;
+            text-align: right;
+            white-space: nowrap;
+            width: 100px;
+        }
+
+        .titolo-cell {
+            color: #e4e4e4;
+            line-height: 1.3;
+            max-width: 300px;
+            word-wrap: break-word;
+        }
+
+        .warning-box {
+            background: rgba(255, 193, 7, 0.1);
+            border: 1px solid #ffc107;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            color: #ffc107;
+        }
+
+        .warning-box h4 {
+            margin-bottom: 10px;
+        }
+
+        .warning-list {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .warning-list li {
+            margin-bottom: 5px;
+            padding-left: 20px;
+            position: relative;
+        }
+
+        .warning-list li::before {
+            content: "⚠️";
+            position: absolute;
+            left: 0;
+        }
+
+        .collegate-info {
+            background: rgba(40, 167, 69, 0.1);
+            border: 1px solid #28a745;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            color: #28a745;
+        }
+
+        .collegate-info h4 {
+            margin-bottom: 10px;
+        }
+
+        .collegate-list {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .collegate-list li {
+            margin-bottom: 5px;
+            padding-left: 20px;
+            position: relative;
+            color: #ffffff;
+        }
+
+        .collegate-list li::before {
+            content: "🏢";
+            position: absolute;
+            left: 0;
+        }
+
+        .errore {
+            background: rgba(220, 53, 69, 0.1);
+            border: 1px solid #dc3545;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            color: #dc3545;
+            text-align: center;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 20px;
+                padding: 20px;
+                max-width: none;
+            }
+
+            .input-group {
+                flex-direction: column;
+            }
+
+            .totale-gruppo {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .azienda-header {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img id="logoImg" src="/static/logo_pigreco.png" alt="Logo" class="logo" onerror="this.style.display='none'">
+            <!-- Fallback SVG se il file non è presente -->
+            <svg id="logoFallback" class="logo-svg" viewBox="0 0 200 80" xmlns="http://www.w3.org/2000/svg">
+                <path d="M5,35 C30,10 90,20 140,30 C175,37 195,35 195,35" stroke="#ffffff" stroke-width="8" fill="none" stroke-linecap="round"/>
+                <path d="M85,30 L85,70" stroke="#ffffff" stroke-width="12" stroke-linecap="square"/>
+                <path d="M115,35 L115,70" stroke="#ffffff" stroke-width="12" stroke-linecap="square"/>
+            </svg>
+            <h1>🧮 Calcolo De Minimis</h1>
+            <div class="subtitle">Calcolo finestra mobile di 3 anni da fonte RNA</div>
+            <div class="features">
+                Sistema Integrato con Ricerca Collegate • 🔗 Cribis X • 🏢 Gruppi Societari • 📊 Calcolo Aggregato • 📋 Export ChatGPT
+            </div>
+        </div>
+
+        <div class="input-section">
+            <!-- Calcolo Aggregato -->
+            <div class="calcolo-mode">
+                <h3>🏢 Calcolo Aggregato (con Ricerca Collegate)</h3>
+                <div class="description">
+                    Ricerca automaticamente le società collegate con controllo >50% tramite Cribis X e calcola il De Minimis complessivo del gruppo.
+                </div>
+                <div class="input-group">
+                    <input 
+                        type="text" 
+                        id="pivaInputAggregato" 
+                        class="piva-input"
+                        placeholder="C.F. per calcolo aggregato (es. 02918700168)"
+                        maxlength="16"
+                    >
+                    <button id="calcola-aggregato-btn" class="calcola-btn btn-aggregato">🏢 Calcola Gruppo</button>
+                </div>
+            </div>
+
+            <!-- Calcolo Singolo -->
+            <div class="calcolo-mode">
+                <h3>🏠 Calcolo Singolo (solo Azienda Specifica)</h3>
+                <div class="description">
+                    Calcola il De Minimis solo per il C.F. inserito, senza ricercare collegate. Più veloce per controlli singoli.
+                </div>
+                <div class="input-group">
+                    <input 
+                        type="text" 
+                        id="pivaInputSingolo" 
+                        class="piva-input"
+                        placeholder="C.F. per calcolo singolo (es. 04898990728)"
+                        maxlength="16"
+                    >
+                    <button id="calcola-singolo-btn" class="calcola-btn btn-singolo">🏠 Calcola Singolo</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="loading" class="loading" style="display: none;">
+            <div class="loading-spinner"></div>
+            <div>Ricerca collegate e calcolo De Minimis in corso...</div>
+            <div style="font-size: 0.9em; color: #b0b0b0; margin-top: 10px;">
+                Questo processo può richiedere alcuni minuti
+            </div>
+        </div>
+
+        <div id="risultati" class="risultati">
+            <!-- I risultati verranno inseriti qui dinamicamente -->
+        </div>
+    </div>
+
+    <script>
+        const pivaInputAggregato = document.getElementById('pivaInputAggregato');
+        const pivaInputSingolo = document.getElementById('pivaInputSingolo');
+        const calcolaAggregatoBtn = document.getElementById('calcola-aggregato-btn');
+        const calcolaSingoloBtn = document.getElementById('calcola-singolo-btn');
+        const loading = document.getElementById('loading');
+        const risultatiDiv = document.getElementById('risultati');
+
+        // Event listeners
+        calcolaAggregatoBtn.addEventListener('click', () => calcolaDeMinimis('aggregato'));
+        calcolaSingoloBtn.addEventListener('click', () => calcolaDeMinimis('singolo'));
+        
+        pivaInputAggregato.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                calcolaDeMinimis('aggregato');
+            }
+        });
+        
+        pivaInputSingolo.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                calcolaDeMinimis('singolo');
+            }
+        });
+
+        async function calcolaDeMinimis(modalita) {
+            // Ottieni P.IVA dal campo corretto
+            const piva = modalita === 'aggregato' 
+                ? pivaInputAggregato.value.trim() 
+                : pivaInputSingolo.value.trim();
+            
+            if (!piva) {
+                alert('Inserisci un Codice Fiscale');
+                return;
+            }
+
+            // Aggiorna loading message basato sulla modalità
+            const loadingMessage = modalita === 'aggregato'
+                ? 'Ricerca collegate e calcolo De Minimis in corso...'
+                : 'Calcolo De Minimis in corso...';
+            
+            document.querySelector('#loading div:nth-child(2)').textContent = loadingMessage;
+
+            // Mostra loading
+            loading.style.display = 'block';
+            risultatiDiv.style.display = 'none';
+            calcolaAggregatoBtn.disabled = true;
+            calcolaSingoloBtn.disabled = true;
+
+            try {
+                // Endpoint diverso per modalità singola
+                const endpoint = modalita === 'aggregato' ? '/aggiungi' : '/calcola_singolo';
+                
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        partite_iva: [piva]
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    mostraRisultati(data.risultato || data, modalita);
+                } else {
+                    mostraErrore(data.errore || 'Errore sconosciuto');
+                }
+
+            } catch (error) {
+                console.error('Errore:', error);
+                mostraErrore('Errore di connessione');
+            } finally {
+                loading.style.display = 'none';
+                calcolaAggregatoBtn.disabled = false;
+                calcolaSingoloBtn.disabled = false;
+            }
+        }
+
+        function mostraRisultati(risultato, modalita) {
+            console.log('Risultato ricevuto:', risultato);
+            console.log('Modalità:', modalita);
+
+            // Adatta la struttura per modalità singola
+            if (modalita === 'singolo') {
+                // Converte risultato singolo in formato compatibile
+                risultato = {
+                    metodo: 'singolo',
+                    p_iva_principale: risultato.p_iva_principale || 'N/A',
+                    associate_trovate: [],
+                    warning: [],
+                    totale_gruppo: {
+                        totale_deminimis: risultato.totale_deminimis || 0,
+                        numero_aziende: 1,
+                        numero_aiuti_totali: risultato.numero_aiuti_totali || 0,
+                        percentuale_utilizzata: risultato.percentuale_utilizzata || 0,
+                        margine_rimanente: risultato.margine_rimanente || 0,
+                        stato: risultato.stato || 'verde'
+                    },
+                    risultati_per_azienda: risultato.risultati_per_azienda || [{
+                        codice_fiscale: risultato.p_iva_principale || 'N/A',
+                        ragione_sociale: "AZIENDA SINGOLA",
+                        percentuale_controllo: "100%",
+                        tipo: "principale",
+                        deminimis_ricevuto: risultato.totale_deminimis || 0,
+                        numero_aiuti: risultato.numero_aiuti_totali || 0,
+                        dettagli_aiuti: risultato.dettagli_aiuti || [],
+                        data_ricerca: risultato.data_ricerca || "",
+                        errore: risultato.errore || null
+                    }]
+                };
+            }
+
+            const metodo = risultato.metodo || 'singolo';
+            const totaleGruppo = risultato.totale_gruppo || {};
+            const aziende = risultato.risultati_per_azienda || [];
+            const associate = risultato.associate_trovate || [];
+            const warnings = risultato.warning || [];
+
+            let html = `
+                <!-- Badge metodo -->
+                <div class="metodo-badge ${metodo === 'aggregato' ? 'metodo-aggregato' : 'metodo-singolo'}">
+                    ${metodo === 'aggregato' ? '🏢 Calcolo Aggregato Gruppo' : '🏠 Calcolo Singola Azienda'}
+                </div>
+
+                <!-- Riepilogo gruppo -->
+                    <div class="riepilogo-gruppo">
+                    <div class="riepilogo-header">
+                        <div class="riepilogo-title">📊 Totale Gruppo De Minimis</div>
+                        <button class="copy-btn" title="Copia riepilogo + tutte le tabelle" onclick="copiaMarkdownAggregato('${risultato.p_iva_principale}', ${JSON.stringify(risultato).replace(/"/g, '&quot;')})">
+                            📋 Copia tutto in Markdown
+                        </button>
+                    </div>
+
+                    <div class="totale-gruppo">
+                        <div class="stat-card stato-${totaleGruppo.stato}">
+                            <div class="stat-value">${formatEuro(totaleGruppo.totale_deminimis || 0)}</div>
+                            <div class="stat-label">Totale De Minimis</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${totaleGruppo.numero_aziende || 0}</div>
+                            <div class="stat-label">Aziende</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${totaleGruppo.numero_aiuti_totali || 0}</div>
+                            <div class="stat-label">Aiuti Totali</div>
+                        </div>
+                        <div class="stat-card stato-${totaleGruppo.stato}">
+                            <div class="stat-value">${(totaleGruppo.percentuale_utilizzata || 0).toFixed(1)}%</div>
+                            <div class="stat-label">Utilizzato (€300K)</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${formatEuro(totaleGruppo.margine_rimanente || 0)}</div>
+                            <div class="stat-label">Margine</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Informazioni collegate
+            if (associate.length > 0) {
+                html += `
+                    <div class="collegate-info">
+                        <h4>🏢 Società Collegate Trovate (>50%)</h4>
+                        <ul class="collegate-list">
+                `;
+                associate.forEach(ass => {
+                    html += `<li>${ass.ragione_sociale} - ${ass.cf} (${ass.percentuale})</li>`;
+                });
+                html += `
+                        </ul>
+                    </div>
+                `;
+            }
+
+            // Warning
+            if (warnings.length > 0) {
+                html += `
+                    <div class="warning-box">
+                        <h4>⚠️ Avvisi</h4>
+                        <ul class="warning-list">
+                `;
+                warnings.forEach(warning => {
+                    html += `<li>${warning}</li>`;
+                });
+                html += `
+                        </ul>
+                    </div>
+                `;
+            }
+
+            // Dettagli per azienda
+            if (aziende.length > 0) {
+                html += `<div class="aziende-lista">`;
+                
+                aziende.forEach(azienda => {
+                    const classeTipo = azienda.tipo === 'principale' ? 'azienda-principale' : 'azienda-associata';
+                    const iconaTipo = azienda.tipo === 'principale' ? '🏠' : '🏢';
+                    
+                    html += `
+                        <div class="azienda-card ${classeTipo}">
+                            <div class="azienda-header">
+                                <div class="azienda-info">
+                                    <h4>${iconaTipo} ${azienda.ragione_sociale}</h4>
+                                    <div class="azienda-details">
+                                        CF: ${azienda.codice_fiscale}
+                                        • Controllo: ${azienda.percentuale_controllo}
+                                        ${azienda.data_ricerca ? ` • ${azienda.data_ricerca}` : ''}
+                                    </div>
+                                </div>
+                                <div class="azienda-totale">
+                                    <div class="valore">${formatEuro(azienda.deminimis_ricevuto || 0)}</div>
+                                    <div class="aiuti">${azienda.numero_aiuti || 0} aiuti</div>
+                                </div>
+                            </div>
+                    `;
+
+                    // Dettagli aiuti se presenti
+                    if (azienda.dettagli_aiuti && azienda.dettagli_aiuti.length > 0) {
+                        html += `
+                            <div class="dettagli-aiuti">
+                                <div class="dettagli-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                                    <h5 style="margin:0;">📋 Dettaglio Aiuti:</h5>
+                                    <button class="copy-btn" onclick="copiaMarkdownAzienda('${azienda.codice_fiscale}', '${azienda.ragione_sociale}', ${JSON.stringify(azienda.dettagli_aiuti).replace(/"/g, '&quot;')}, this)">📋 Copia Markdown</button>
+                                </div>
+                                <div class="tabella-container">
+                                    <table class="tabella-aiuti">
+                                        <thead>
+                                            <tr>
+                                                <th>Data Concessione</th>
+                                                <th>Importo</th>
+                                                <th>Titolo Misura</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                        `;
+                        
+                        azienda.dettagli_aiuti.forEach(aiuto => {
+                            html += `
+                                <tr>
+                                    <td class="data-cell">${aiuto.data_concessione}</td>
+                                    <td class="importo-cell">${formatEuro(aiuto.importo)}</td>
+                                    <td class="titolo-cell">${aiuto.titolo_misura}</td>
+                                </tr>
+                            `;
+                        });
+                        
+                        html += `
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    // Errore azienda
+                    if (azienda.errore) {
+                        html += `
+                            <div class="errore">
+                                ❌ ${azienda.errore}
+                            </div>
+                        `;
+                    }
+
+                    html += `</div>`;
+                });
+
+                html += `</div>`;
+            }
+
+            risultatiDiv.innerHTML = html;
+            risultatiDiv.style.display = 'block';
+            risultatiDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function mostraErrore(messaggio) {
+            risultatiDiv.innerHTML = `
+                <div class="errore">
+                    <h3>❌ Errore</h3>
+                    <p>${messaggio}</p>
+                </div>
+            `;
+            risultatiDiv.style.display = 'block';
+        }
+
+        function formatEuro(amount) {
+            return new Intl.NumberFormat('it-IT', {
+                style: 'currency',
+                currency: 'EUR',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(amount);
+        }
+
+        function copiaMarkdownAggregato(piva, risultato) {
+            // Genera markdown per riepilogo + tutte le tabelle aziende
+            let markdown = `# Analisi De Minimis Aggregato - C.F. ${piva}\n\n`;
+            
+            // Metodo e overview
+            const metodo = risultato.metodo || 'singolo';
+            const totaleGruppo = risultato.totale_gruppo || {};
+            const aziende = risultato.risultati_per_azienda || [];
+            const associate = risultato.associate_trovate || [];
+            
+            markdown += `## 📊 Riepilogo Gruppo\n`;
+            markdown += `- **C.F. Principale**: ${piva}\n`;
+            markdown += `- **Metodo**: ${metodo === 'aggregato' ? 'Calcolo Aggregato Gruppo' : 'Calcolo Singola Azienda'}\n`;
+            markdown += `- **Totale De Minimis**: ${formatEuro(totaleGruppo.totale_deminimis || 0)}\n`;
+            markdown += `- **Numero Aziende**: ${totaleGruppo.numero_aziende || 0}\n`;
+            markdown += `- **Aiuti Totali**: ${totaleGruppo.numero_aiuti_totali || 0}\n`;
+            markdown += `- **Utilizzato**: ${(totaleGruppo.percentuale_utilizzata || 0).toFixed(1)}% (€300.000)\n`;
+            markdown += `- **Margine**: ${formatEuro(totaleGruppo.margine_rimanente || 0)}\n`;
+            markdown += `- **Stato**: ${totaleGruppo.stato?.toUpperCase() || 'N/A'}\n\n`;
+            
+            // Collegate se presenti
+            if (associate.length > 0) {
+                markdown += `## 🏢 Società Collegate (>50%)\n\n`;
+                associate.forEach(ass => {
+                    markdown += `- **${ass.ragione_sociale}** - ${ass.cf} (${ass.percentuale})\n`;
+                });
+                markdown += `\n`;
+            }
+            
+            // Dettagli per azienda
+            if (aziende.length > 0) {
+                markdown += `## 📋 Dettaglio per Azienda\n\n`;
+                
+                aziende.forEach(azienda => {
+                    const tipo = azienda.tipo === 'principale' ? '🏠 PRINCIPALE' : '🏢 ASSOCIATA';
+                    markdown += `### ${tipo}: ${azienda.ragione_sociale}\n\n`;
+                    markdown += `- **CF**: ${azienda.codice_fiscale}\n`;
+                    markdown += `- **Controllo**: ${azienda.percentuale_controllo}\n`;
+                    markdown += `- **De Minimis**: ${formatEuro(azienda.deminimis_ricevuto || 0)}\n`;
+                    markdown += `- **Aiuti**: ${azienda.numero_aiuti || 0}\n\n`;
+                    
+                    const aiuti = Array.isArray(azienda.dettagli_aiuti) ? azienda.dettagli_aiuti : [];
+                    if (aiuti.length > 0) {
+                        markdown += `| Data Concessione | Importo | Titolo Misura |\n`;
+                        markdown += `|------------------|---------|---------------|\n`;
+                        aiuti.forEach(aiuto => {
+                            const titolo = String(aiuto.titolo_misura || '').replace(/\|/g, '-').substring(0, 80);
+                            markdown += `| ${aiuto.data_concessione || ''} | ${formatEuro(aiuto.importo || 0)} | ${titolo} |\n`;
+                        });
+                        markdown += `\n`;
+                    }
+                });
+            }
+            
+            markdown += `---\n*Dati estratti automaticamente dal sistema RNA De Minimis Aggregato*`;
+            
+            // Copia negli appunti
+            navigator.clipboard.writeText(markdown).then(() => {
+                // Feedback visivo
+                const button = event.target;
+                const originalText = button.innerHTML;
+                button.innerHTML = '✅ Copiato!';
+                button.style.background = '#27ae60';
+                setTimeout(() => {
+                    button.innerHTML = originalText;
+                    button.style.background = '#4a9eff';
+                }, 2000);
+            }).catch(err => {
+                alert('Errore nella copia: ' + err);
+            });
+        }
+
+        function copiaMarkdownAzienda(cf, ragioneSociale, dettagliAiuti, button) {
+            try {
+                // Normalizza array
+                const aiuti = Array.isArray(dettagliAiuti) ? dettagliAiuti : [];
+
+                let markdown = `### 🏢 ${ragioneSociale} (CF ${cf})\n\n`;
+                const totale = aiuti.reduce((sum, a) => sum + (a.importo || 0), 0);
+                markdown += `- **Totale De Minimis**: ${formatEuro(totale)}\n`;
+                markdown += `- **Numero Aiuti**: ${aiuti.length}\n\n`;
+
+                if (aiuti.length > 0) {
+                    markdown += `| Data Concessione | Importo | Titolo Misura |\n`;
+                    markdown += `|------------------|---------|---------------|\n`;
+                    aiuti.forEach(a => {
+                        const titolo = String(a.titolo_misura || '').replace(/\|/g, '-').substring(0, 80);
+                        markdown += `| ${a.data_concessione || ''} | ${formatEuro(a.importo || 0)} | ${titolo} |\n`;
+                    });
+                }
+
+                navigator.clipboard.writeText(markdown).then(() => {
+                    const originalText = button.innerHTML;
+                    button.innerHTML = '✅ Copiato!';
+                    button.style.background = '#27ae60';
+                    setTimeout(() => {
+                        button.innerHTML = originalText;
+                        button.style.background = '#4a9eff';
+                    }, 2000);
+                }).catch(err => {
+                    alert('Errore nella copia: ' + err);
+                });
+            } catch (e) {
+                alert('Errore nella generazione del Markdown: ' + e.message);
+            }
+        }
+    </script>
+</body>
+</html>

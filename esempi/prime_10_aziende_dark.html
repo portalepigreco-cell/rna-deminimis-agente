@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prime 10 Aziende - RNA Aiuti Luglio 2025</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            line-height: 1.6;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 30px;
+            background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
+            border-radius: 15px;
+            border: 1px solid #333;
+        }
+        
+        h1 {
+            color: #ffffff;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #888;
+            font-size: 1.1em;
+        }
+        
+        .company-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 25px;
+        }
+        
+        .company-card {
+            background: linear-gradient(135deg, #1e1e1e, #2d2d2d);
+            border: 1px solid #404040;
+            border-radius: 12px;
+            padding: 25px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .company-card:hover {
+            transform: translateY(-3px);
+            border-color: #00d4ff;
+            box-shadow: 0 8px 25px rgba(0, 212, 255, 0.1);
+        }
+        
+        .company-number {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            background: #00d4ff;
+            color: #000;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        
+        .company-name {
+            color: #00d4ff;
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            padding-right: 50px;
+        }
+        
+        .info-row {
+            display: flex;
+            margin-bottom: 8px;
+            align-items: flex-start;
+        }
+        
+        .label {
+            min-width: 120px;
+            color: #888;
+            font-weight: 500;
+            font-size: 0.9em;
+        }
+        
+        .value {
+            color: #e0e0e0;
+            flex: 1;
+            font-size: 0.9em;
+        }
+        
+        .amount {
+            color: #00ff88;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+        
+        .region {
+            display: inline-block;
+            background: #4a4a4a;
+            color: #fff;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: 500;
+        }
+        
+        .project-title {
+            color: #ffaa00;
+            font-weight: 600;
+            margin-top: 10px;
+            font-size: 1em;
+        }
+        
+        .cf-code {
+            font-family: 'Courier New', monospace;
+            background: #333;
+            padding: 2px 5px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            color: #ff6b6b;
+        }
+        
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            color: #666;
+            font-size: 0.9em;
+            padding: 20px;
+            border-top: 1px solid #333;
+        }
+        
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: #2a2a2a;
+            border: 1px solid #404040;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .stat-number {
+            color: #00d4ff;
+            font-size: 2em;
+            font-weight: bold;
+            display: block;
+        }
+        
+        .stat-label {
+            color: #888;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🏢 Prime 10 Aziende</h1>
+            <div class="subtitle">RNA Aiuti - Luglio 2025</div>
+        </div>
+
+        <!-- Statistiche Riassuntive -->
+        <div class="summary-stats">
+            <div class="stat-card">
+                <span class="stat-number">€ 508k</span>
+                <div class="stat-label">Totale Aiuti</div>
+            </div>
+            <div class="stat-card">
+                <span class="stat-number">7</span>
+                <div class="stat-label">Puglia</div>
+            </div>
+            <div class="stat-card">
+                <span class="stat-number">2</span>
+                <div class="stat-label">Marche</div>
+            </div>
+            <div class="stat-card">
+                <span class="stat-number">1</span>
+                <div class="stat-label">Trentino</div>
+            </div>
+        </div>
+
+        <!-- Griglia Aziende -->
+        <div class="company-grid">
+            <!-- Azienda 1: GAMS S.R.L -->
+            <div class="company-card">
+                <div class="company-number">1</div>
+                <div class="company-name">GAMS S.R.L</div>
+                
+                <div class="info-row">
+                    <div class="label">Codice Fiscale:</div>
+                    <div class="value"><span class="cf-code">07074690723</span></div>
+                </div>
+                
+                <div class="info-row">
+                    <div class="label">Regione:</div>
+                    <div class="value"><span class="region">Puglia</span></div>
+                </div>
+                
+                <div class="info-row">
+                    <div class="label">Importo:</div>
+                    <div class="value"><span class="amount">€ 55.985,00</span></div>
+                </div>
+                
+                <div class="project-title">GAMS ECOMMERCE E CAMBIAMENTO ORGANIZZATIVO</div>
+                
+                <div style="margin-top: 10px; color: #aaa; font-size: 0.85em;">
+                    Trasformazione digitale nel settore moda mare con sviluppo e-commerce e servizi di supporto digitale
+                </div>
+            </div>
+
+            <!-- Azienda 2: F.LLI CARPARELLI S.R.L. -->
+            <div class="company-card">
+                <div class="company-number">2</div>
+                <div class="company-name">F.LLI CARPARELLI S.R.L.</div>
+                
+                <div class="info-row">
+                    <div class="label">Codice Fiscale:</div>
+                    <div class="value"><span class="cf-code">04898990728</span></div>
+                </div>
+                
+                <div class="info-row">
+                    <div class="label">Regione:</div>
+                    <div class="value"><span class="region">Puglia</span></div>
+                </div>
+                
+                <div class="info-row">
+                    <div class="label">Importo:</div>
+                    <div class="value"><span class="amount">€ 60.806,00</span></div>
+                </div>
+                
+                <div class="project-title">F.LLI CARPARELLI - UNA NUOVA GENERAZIONE TECNOLOGICA</div>
+                
+                <div style="margin-top: 10px; color: #aaa; font-size: 0.85em;">
+                    Innovazione digitale con CRM, Business Intelligence e AI per ottimizzazione aziendale
+                </div>
+            </div>
+
+            <!-- Azienda 3: C.D.P. S.R.L. -->
+            <div class="company-card">
+                <div class="company-number">3</div>
+                <div class="company-name">C.D.P. S.R.L.</div>
+                
+                <div class="info-row">
+                    <div class="label">Codice Fiscale:</div>
+                    <div class="value"><span class="cf-code">05885800721</span></div>
+                </div>
+                
+                <div class="info-row">
+                    <div class="label">Regione:</div>
+                    <div class="value"><span class="region">Puglia</span></div>
+                </div>
+                
+                <div class="info-row">
+                    <div class="label">Importo:</div>
+                    <div class="value"><span class="amount">€ 10.750,00</span></div>
+                </div>
+                
+                <div class="project-title">Innovazione organizzativa</div>
+                
+                <div style="margin-top: 10px; color: #aaa; font-size: 0.85em;">
+                    Implementazione Activity Based Costing, KPI e AI per governance aziendale efficiente
+                </div>
+            </div>
+
+            <!-- Azienda 4: ALL SERVICE NETWORK S.R.L. -->
+            <div class="company-card">
+                <div class="company-number">4</div>
+                <div class="company-name">ASERNET S.R.L.</div>
+                
+                <div class="info-row">
+                    <div class="label">Codice Fiscale:</div>
+                    <div class="value"><span class="cf-code">02143300719</span></div>
+                </div>
+                
+                <div class="info-row">
+                    <div class="label">Regione:</div>
+                    <div class="value"><span class="region">Puglia</span></div>
+                </div>
+                
+                <div class="info-row">
+                    <div class="label">Importo:</div>
+                    <div class="value"><span class="amount">€ 35.000,00</span></div>
+                </div>
+                
+                <div class="project-title">Data Genius</div>
+                
+                <div style="margin-top: 10px; color: #aaa; font-size: 0.85em;">
+                    Piattaforma software per servizi consulenziali con moduli per marketing automation e analisi dati
+                </div>
+            </div>
+
+            <!-- Azienda 5: THE WHITE PAPER S.R.L. -->
+            <div class="company-card">
+                <div class="company-number">5</div>
+                <div class="company-name">THE WHITE PAPER S.R.L.</div>
+                
+                <div class="info-row">
+                    <div class="label">Codice Fiscale:</div>
+                    <div class="value"><span class="cf-code">03254550738</span></div>
+                </div>
+                
+                <div class="info-row">
+                    <div class="label">Regione:</div>
+                    <div class="value"><span class="region">Puglia</span></div>
+                </div>
+                
+                <div class="info-row">
+                    <div class="label">Importo:</div>
+                    <div class="value"><span class="amount">€ 17.212,50</span></div>
+                </div>
+                
+                <div class="project-title">AUTOMAZIONE E INNOVAZIONE PROCESSI ECOMMERCE</div>
+                
+                <div style="margin-top: 10px; color: #aaa; font-size: 0.85em;">
+                    Creazione di 2 piattaforme e-commerce integrate con servizi di gestione aziendale
+                </div>
+            </div>
+
+            <!-- Azienda 6: BARIFORNIA PADDLE SURF S.R.L.S. -->
+            <div class="company-card">
+                <div class="company-number">6</div>
+                <div class="company-name">BARIFORNIA PADDLE SURF S.R.L.S.</div>
+                
+                <div class="info-row">
+                    <div class="label">Codice Fiscale:</div>
+                    <div class="value"><span class="cf-code">09066930729</span></div>
+                </div>
+                
+                <div class="info-row">
+                    <div class="label">Regione:</div>
+                    <div class="value"><span class="region">Puglia</span></div>
+                </div>
+                
+                <div class="info-row">
+                    <div class="label">Importo:</div>
+                    <div class="value"><span class="amount">€ 49.065,22</span></div>
+                </div>
+                
+                <div class="project-title">LA CASA DEL SURF</div>
+                
+                <div style="margin-top: 10px; color: #aaa; font-size: 0.85em;">
+                    Struttura per sport acquatici a 100m dalla spiaggia "Pane e pomodoro" di Bari
+                </div>
+            </div>
+
+            <!-- Azienda 7: PLANSTUDIO S.R.L. -->
+            <div class="company-card">
+                <div class="company-number">7</div>
+                <div class="company-name">PLANSTUDIO S.R.L.</div>
+                
+                <div class="info-row">
+                    <div class="label">Codice Fiscale:</div>
+                    <div class="value"><span class="cf-code">01392840417</span></div>
+                </div>
+                
+                <div class="info-row">
+                    <div class="label">Regione:</div>
+                    <div class="value"><span class="region">Marche</span></div>
+                </div>
+                
+                <div class="info-row">
+                    <div class="label">Importo:</div>
+                    <div class="value"><span class="amount">€ 6.500,00</span></div>
+                </div>
+                
+                <div class="project-title">Incentivi assunzioni 2025</div>
+                
+                <div style="margin-top: 10px; color: #aaa; font-size: 0.85em;">
+                    Aiuti per assunzione soggetti disoccupati e svantaggiati - Settore ICT
+                </div>
+            </div>
+
+            <!-- Azienda 8: CIPA FORMAZIONE E SERVIZI -->
+            <div class="company-card">
+                <div class="company-number">8</div>
+                <div class="company-name">CIPA FORMAZIONE E SERVIZI</div>
+                
+                <div class="info-row">
+                    <div class="label">Codice Fiscale:</div>
+                    <div class="value"><span class="cf-code">00185800422</span></div>
+                </div>
+                
+                <div class="info-row">
+                    <div class="label">Regione:</div>
+                    <div class="value"><span class="region">Marche</span></div>
+                </div>
+                
+                <div class="info-row">
+                    <div class="label">Importo:</div>
+                    <div class="value"><span class="amount">€ 19.500,00</span></div>
+                </div>
+                
+                <div class="project-title">Incentivi assunzioni 2025</div>
+                
+                <div style="margin-top: 10px; color: #aaa; font-size: 0.85em;">
+                    Società cooperativa - Aiuti per assunzione nel settore formazione e servizi
+                </div>
+            </div>
+
+            <!-- Azienda 9: ARTIGIANA MARMI S.R.L. -->
+            <div class="company-card">
+                <div class="company-number">9</div>
+                <div class="company-name">ARTIGIANA MARMI S.R.L.</div>
+                
+                <div class="info-row">
+                    <div class="label">Codice Fiscale:</div>
+                    <div class="value"><span class="cf-code">02279960419</span></div>
+                </div>
+                
+                <div class="info-row">
+                    <div class="label">Regione:</div>
+                    <div class="value"><span class="region">Marche</span></div>
+                </div>
+                
+                <div class="info-row">
+                    <div class="label">Importo:</div>
+                    <div class="value"><span class="amount">€ 19.500,00</span></div>
+                </div>
+                
+                <div class="project-title">Incentivi assunzioni 2025</div>
+                
+                <div style="margin-top: 10px; color: #aaa; font-size: 0.85em;">
+                    Settore lavorazione marmi - Aiuti per assunzione soggetti svantaggiati
+                </div>
+            </div>
+
+            <!-- Azienda 10: CINETIX S.R.L. -->
+            <div class="company-card">
+                <div class="company-number">10</div>
+                <div class="company-name">CINETIX S.R.L.</div>
+                
+                <div class="info-row">
+                    <div class="label">Codice Fiscale:</div>
+                    <div class="value"><span class="cf-code">04108170962</span></div>
+                </div>
+                
+                <div class="info-row">
+                    <div class="label">Regione:</div>
+                    <div class="value"><span class="region">Trentino</span></div>
+                </div>
+                
+                <div class="info-row">
+                    <div class="label">Importo:</div>
+                    <div class="value"><span class="amount">€ 285.231,64</span></div>
+                </div>
+                
+                <div class="project-title">CyberSecurNETIX</div>
+                
+                <div style="margin-top: 10px; color: #aaa; font-size: 0.85em;">
+                    Progetto CyberSecurity Network Traffic Access Point - Ricerca industriale e sviluppo sperimentale
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>Dati estratti da OpenData_Aiuti_2025_07.xml</p>
+            <p>Generato il <span id="currentDate"></span></p>
+        </div>
+    </div>
+
+    <script>
+        // Imposta data corrente
+        document.getElementById('currentDate').textContent = 
+            new Date().toLocaleDateString('it-IT') + ' alle ' + new Date().toLocaleTimeString('it-IT');
+        
+        // Animazione cards al caricamento
+        window.addEventListener('load', function() {
+            const cards = document.querySelectorAll('.company-card');
+            cards.forEach((card, index) => {
+                setTimeout(() => {
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                }, index * 100);
+            });
+        });
+        
+        // Imposta animazione iniziale
+        document.querySelectorAll('.company-card').forEach(card => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(20px)';
+            card.style.transition = 'all 0.6s ease';
+        });
+    </script>
+</body>
+</html>

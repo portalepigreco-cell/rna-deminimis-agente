@@ -1,0 +1,45 @@
+# File Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# File IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# File sistema
+.DS_Store
+Thumbs.db
+
+# File debug e temporanei
+debug_*.html
+debug_*.png
+debug_*.txt
+*.log
+
+# File sensibili (se presenti)
+.env
+config.ini
+secrets.json
+
+# File di test
+test_*.py
+*_test.py
+
+# File database locali (mantieni solo quello principale)
+database_piva_backup.json
+database_piva_old.json
+
+# File Playwright
+playwright-report/
+test-results/
