@@ -30,9 +30,16 @@ class CribisXPlaywright:
     def __enter__(self):
         """Context manager entry"""
         self.playwright = sync_playwright().start()
+        # Configurazione browser per ambienti cloud (Render, etc.)
         self.browser = self.playwright.chromium.launch(
             headless=self.headless,
-            slow_mo=200 if not self.headless else 0
+            slow_mo=200 if not self.headless else 0,
+            args=[
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-gpu'
+            ]
         )
         self.page = self.browser.new_page()
         return self

@@ -37,7 +37,17 @@ class RNACalculator:
         tre_anni_fa = oggi - timedelta(days=3 * 365)
 
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=self.headless, slow_mo=self.slow_mo_ms)
+            # Configurazione browser per ambienti cloud (Render, etc.)
+            browser = p.chromium.launch(
+                headless=self.headless, 
+                slow_mo=self.slow_mo_ms,
+                args=[
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--disable-gpu'
+                ]
+            )
             page = browser.new_page()
 
             try:

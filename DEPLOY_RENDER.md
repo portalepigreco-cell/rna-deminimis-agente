@@ -45,8 +45,11 @@ git push -u origin main
 - **Branch:** `main`
 - **Root Directory:** lascia vuoto
 - **Runtime:** `Python 3`
-- **Build Command:** `pip install -r requirements.txt`
-- **Start Command:** `gunicorn --bind 0.0.0.0:$PORT web_finale:app`
+- **Build Command:** 
+  ```bash
+  pip install --upgrade pip && pip install -r requirements.txt && playwright install --with-deps chromium
+  ```
+- **Start Command:** `gunicorn --bind 0.0.0.0:$PORT wsgi:application`
 
 **Piano:**
 - **Free Tier:** Gratuito ma con limitazioni (app si spegne dopo inattività)
@@ -100,20 +103,38 @@ Una volta deployata, testa:
 
 ## 🐛 Risoluzione Problemi
 
+### Errore Playwright "Executable doesn't exist":
+**Problema:** `BrowserType.launch: Executable doesn't exist at /opt/render/.cache/ms-playwright/...`
+
+**Soluzione applicata:**
+1. ✅ Modificato `render.yaml` per usare `playwright install --with-deps chromium`
+2. ✅ Aggiunto argomenti browser per ambienti cloud nel codice Python:
+   - `--no-sandbox`
+   - `--disable-setuid-sandbox`
+   - `--disable-dev-shm-usage`
+   - `--disable-gpu`
+
+**Se l'errore persiste:**
+- Verifica che il Build Command includa: `playwright install --with-deps chromium`
+- Assicurati di usare il piano **Standard** o superiore (il piano Free potrebbe avere limitazioni)
+
 ### Build fallisce:
 1. Controlla i log nella dashboard Render
 2. Verifica che `requirements.txt` sia corretto
 3. Assicurati che tutti i file siano committati
+4. Controlla che il Build Command includa l'installazione di Playwright
 
 ### App non si avvia:
 1. Controlla che `web_finale.py` non abbia errori
 2. Verifica le variabili d'ambiente
 3. Controlla i log dell'applicazione
+4. Verifica che Playwright sia installato correttamente (controlla i build logs)
 
 ### Errori 500:
 1. Attiva debug temporaneamente: `FLASK_DEBUG=True`
 2. Controlla i log per errori specifici
 3. Testa localmente prima del deploy
+4. Se l'errore riguarda Playwright, verifica gli argomenti del browser
 
 ## 📞 Supporto
 
