@@ -12,12 +12,14 @@ services:
     name: rna-deminimis-app
     env: python
     region: frankfurt  # Regione europea per migliori performance in Italia
-    plan: free  # Piano gratuito - cambia in 'starter' se serve più potenza
+    plan: standard  # Piano standard per prestazioni ottimali con Playwright
     
     # Configurazione build
     buildCommand: |
       pip install --upgrade pip
       pip install -r requirements.txt
+      playwright install chromium
+      playwright install-deps
     
     # Comando per avviare l'app
     startCommand: gunicorn --bind 0.0.0.0:$PORT wsgi:application
