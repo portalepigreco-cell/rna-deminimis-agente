@@ -20,7 +20,7 @@ services:
       pip install -r requirements.txt
     
     # Comando per avviare l'app
-    startCommand: gunicorn --bind 0.0.0.0:$PORT web_finale:app
+    startCommand: gunicorn --bind 0.0.0.0:$PORT wsgi:application
     
     # Configurazione ambiente
     envVars:
