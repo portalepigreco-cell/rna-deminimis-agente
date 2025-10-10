@@ -6,4 +6,4 @@
 #
 # Autore: Pigreco Team
 
-web: gunicorn --bind 0.0.0.0:$PORT --workers 2 --worker-class sync --timeout 120 wsgi:application
+web: gunicorn --bind 0.0.0.0:$PORT --workers 1 --worker-class sync --timeout 300 wsgi:application

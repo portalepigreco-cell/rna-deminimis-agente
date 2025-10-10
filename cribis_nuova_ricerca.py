@@ -44,6 +44,24 @@ class CribisNuovaRicerca:
         self.playwright = None
         self.browser = None
         self.page = None
+    
+    def _screenshot(self, path: str, descrizione: str = ""):
+        """
+        Salva screenshot solo in modalità debug (headless=False)
+        
+        Args:
+            path: Percorso file screenshot
+            descrizione: Descrizione per log
+        """
+        if not self.headless:
+            try:
+                self.page.screenshot(path=path)
+                if descrizione:
+                    print(f"📸 Screenshot: {descrizione}")
+                else:
+                    print(f"📸 Screenshot: {path}")
+            except Exception as e:
+                print(f"⚠️ Errore screenshot: {e}")
         
     def __enter__(self):
         """Context manager entry"""
@@ -86,9 +104,8 @@ class CribisNuovaRicerca:
             # Aspetta che la pagina sia caricata
             time.sleep(3)
             
-            # Salva screenshot iniziale
-            self.page.screenshot(path="debug_cribis_nuova_01_login_page.png")
-            print("📸 Screenshot: debug_cribis_nuova_01_login_page.png")
+            # Salva screenshot iniziale (solo se headless=False)
+            self._screenshot("debug_cribis_nuova_01_login_page.png", "Login page")
             
             # Trova campo username con selettori multipli
             selettori_username = [
@@ -174,8 +191,7 @@ class CribisNuovaRicerca:
             print(f"📍 URL dopo login: {current_url}")
             
             # Salva screenshot dopo login
-            self.page.screenshot(path="debug_cribis_nuova_02_dopo_login.png")
-            print("📸 Screenshot: debug_cribis_nuova_02_dopo_login.png")
+            self._screenshot("debug_cribis_nuova_02_dopo_login.png", "Dopo login")
             
             print("✅ Login completato con successo!")
             return True
@@ -229,8 +245,7 @@ class CribisNuovaRicerca:
             time.sleep(1)
             
             # Salva screenshot prima di premere invio
-            self.page.screenshot(path="debug_cribis_nuova_03_piva_inserita.png")
-            print("📸 Screenshot: debug_cribis_nuova_03_piva_inserita.png")
+            self._screenshot("debug_cribis_nuova_03_piva_inserita.png", "P.IVA inserita")
             
             # Premi INVIO (come richiesto dall'utente)
             print("⏎ Premendo INVIO...")
@@ -241,8 +256,7 @@ class CribisNuovaRicerca:
             time.sleep(3)
             
             # Salva screenshot risultati
-            self.page.screenshot(path="debug_cribis_nuova_04_risultati_cerca.png")
-            print("📸 Screenshot: debug_cribis_nuova_04_risultati_cerca.png")
+            self._screenshot("debug_cribis_nuova_04_risultati_cerca.png", "Risultati ricerca")
             
             print("✅ Ricerca completata")
             return True

@@ -21,7 +21,8 @@ services:
       playwright install --with-deps chromium
     
     # Comando per avviare l'app
-    startCommand: gunicorn --bind 0.0.0.0:$PORT --workers 2 --worker-class sync --timeout 120 wsgi:application
+    # 1 worker per evitare conflitti con Playwright, timeout 300s per calcoli lunghi
+    startCommand: gunicorn --bind 0.0.0.0:$PORT --workers 1 --worker-class sync --timeout 300 wsgi:application
     
     # Configurazione ambiente
     envVars:

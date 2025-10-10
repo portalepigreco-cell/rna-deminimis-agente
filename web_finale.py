@@ -104,6 +104,14 @@ def calcola_deminimis():
         
         elif mode == 'aggregato':
             # Modalità aggregato: cerca nell'archivio Cribis + calcola de minimis gruppo
+            # TEMPORANEAMENTE DISABILITATA SU RENDER (usa Selenium invece di Playwright)
+            import os
+            if os.environ.get('RENDER') or os.environ.get('FLASK_ENV') == 'production':
+                return jsonify({
+                    "errore": "⚠️ Modalità 'Collegato (archivio)' temporaneamente non disponibile in produzione",
+                    "dettaglio": "Utilizza la modalità 'Collegato (Nuova Ricerca)' oppure 'De Minimis' per ricerche singole."
+                }), 503
+            
             partita_iva = data.get('partita_iva', '').strip()
             
             if not partita_iva:
@@ -117,7 +125,7 @@ def calcola_deminimis():
                 cribis = CribisXConnector(headless=True)
             except Exception as e:
                 print(f"⚠️ Errore inizializzazione Cribis: {e}")
-                return jsonify({"errore": "Servizio Cribis temporaneamente non disponibile su Free Plan. Upgrade a Hobby ($19) per prestazioni complete."}), 503
+                return jsonify({"errore": "Servizio Cribis archivio non disponibile. Usa 'Nuova Ricerca' invece."}), 503
             risultato_cribis = cribis.cerca_associate(partita_iva)
             
             if risultato_cribis.get("errore"):
