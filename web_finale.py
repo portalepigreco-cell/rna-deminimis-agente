@@ -50,7 +50,7 @@ def calcola_deminimis():
                 calc = RNACalculator(headless=True)
             except Exception as e:
                 print(f"⚠️ Errore inizializzazione RNA Calculator: {e}")
-                return jsonify({"errore": "Servizio temporaneamente non disponibile su Free Plan. Upgrade a Hobby ($19) per prestazioni complete."}), 503
+                return jsonify({"errore": f"❌ Servizio RNA temporaneamente non disponibile: {str(e)}"}), 503
             
             for piva in partite_iva:
                 piva = piva.strip()
@@ -143,7 +143,7 @@ def calcola_deminimis():
                 calc = RNACalculator(headless=True)
             except Exception as e:
                 print(f"⚠️ Errore inizializzazione RNA Calculator: {e}")
-                return jsonify({"errore": "Servizio temporaneamente non disponibile su Free Plan. Upgrade a Hobby ($19) per prestazioni complete."}), 503
+                return jsonify({"errore": f"❌ Servizio RNA temporaneamente non disponibile: {str(e)}"}), 503
             risultati_dettaglio = []
             totale_gruppo = 0
             
@@ -262,15 +262,20 @@ def cribis_nuova_ricerca():
                 "partita_iva": partita_iva
             }), 400
         
-        # Chiama la funzione di ricerca (browser visibile per ora)
+        # Chiama la funzione di ricerca (headless su produzione, visibile su sviluppo)
         print(f"🔍 Avvio Nuova Ricerca Cribis per P.IVA: {partita_iva}")
         # Import lazy per evitare errori di dipendenze all'avvio su Render
         try:
+            import os
             from cribis_nuova_ricerca import cerca_associate_nuova_procedura
-            risultato = cerca_associate_nuova_procedura(partita_iva, headless=False)
+            # Headless su Render/produzione, visibile in locale
+            is_production = os.environ.get('RENDER') or os.environ.get('FLASK_ENV') == 'production'
+            risultato = cerca_associate_nuova_procedura(partita_iva, headless=is_production)
         except Exception as e:
             print(f"⚠️ Errore inizializzazione Cribis Nuova Ricerca: {e}")
-            return jsonify({"errore": "Servizio Cribis temporaneamente non disponibile su Free Plan. Upgrade a Hobby ($19) per prestazioni complete."}), 503
+            import traceback
+            print(traceback.format_exc())
+            return jsonify({"errore": f"❌ Servizio Cribis temporaneamente non disponibile: {str(e)}"}), 503
         
         # Formatta il risultato per il frontend
         if risultato.get("errore"):
@@ -309,7 +314,7 @@ def cribis_nuova_ricerca():
             calc = RNACalculator(headless=True)
         except Exception as e:
             print(f"⚠️ Errore inizializzazione RNA Calculator: {e}")
-            return jsonify({"errore": "Servizio temporaneamente non disponibile su Free Plan. Upgrade a Hobby ($19) per prestazioni complete."}), 503
+            return jsonify({"errore": f"❌ Servizio RNA temporaneamente non disponibile: {str(e)}"}), 503
         risultati_dettaglio = []
         totale_gruppo = 0
         numero_aiuti_totale = 0
