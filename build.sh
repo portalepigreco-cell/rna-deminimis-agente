@@ -7,48 +7,43 @@ set -e  # Exit on error
 
 echo "🚀 Avvio build RNA De Minimis App per Render..."
 
-# 1. Imposta variabile d'ambiente Playwright PRIMA di tutto
-export PLAYWRIGHT_BROWSERS_PATH=/opt/render/project/src/.cache/ms-playwright
-echo "✅ PLAYWRIGHT_BROWSERS_PATH impostato: $PLAYWRIGHT_BROWSERS_PATH"
-
-# 2. Upgrade pip
+# 1. Upgrade pip
 echo "📦 Upgrade pip..."
 pip install --upgrade pip
 
-# 3. Installa requirements
+# 2. Installa requirements
 echo "📦 Installazione requirements..."
 pip install -r requirements.txt
 
-# 4. Installa browser Playwright con fallback automatico
+# 3. Installa browser Playwright con fallback automatico
 echo "🌐 Installazione browser Playwright..."
+echo "ℹ️ Uso path di default Playwright (più stabile su Render)"
 
-# Tentativo 1: Con --with-deps (richiede permessi di sistema)
-if playwright install --with-deps chromium 2>&1 | tee /tmp/playwright-install.log; then
-    echo "✅ Browser installato con successo (con dipendenze di sistema)"
+# Tentativo 1: Senza --with-deps (consigliato per Render Free/Starter)
+if playwright install chromium 2>&1 | tee /tmp/playwright-install.log; then
+    echo "✅ Browser installato con successo"
+    echo "ℹ️ Gli argomenti --no-sandbox nel codice compensano le dipendenze di sistema"
 else
-    echo "⚠️ Installazione con --with-deps fallita, provo senza..."
-    
-    # Tentativo 2: Senza --with-deps (fallback)
-    if playwright install chromium; then
-        echo "✅ Browser installato con successo (modalità fallback)"
-        echo "ℹ️ Nota: Alcune funzionalità potrebbero essere limitate senza dipendenze di sistema"
-    else
-        echo "❌ ERRORE: Impossibile installare browser Playwright"
-        echo "📋 Log installazione:"
-        cat /tmp/playwright-install.log || true
-        exit 1
-    fi
+    echo "❌ ERRORE: Impossibile installare browser Playwright"
+    echo "📋 Log installazione:"
+    cat /tmp/playwright-install.log || true
+    exit 1
 fi
 
-# 5. Verifica installazione
+# 4. Verifica installazione
 echo "🔍 Verifica installazione browser..."
-if [ -d "$PLAYWRIGHT_BROWSERS_PATH" ]; then
-    echo "✅ Directory browser trovata: $PLAYWRIGHT_BROWSERS_PATH"
-    ls -lah "$PLAYWRIGHT_BROWSERS_PATH" || true
+PLAYWRIGHT_DEFAULT_PATH="$HOME/.cache/ms-playwright"
+
+if [ -d "$PLAYWRIGHT_DEFAULT_PATH" ]; then
+    echo "✅ Directory browser trovata: $PLAYWRIGHT_DEFAULT_PATH"
+    ls -lah "$PLAYWRIGHT_DEFAULT_PATH" || true
+elif [ -d "/opt/render/.cache/ms-playwright" ]; then
+    echo "✅ Directory browser trovata: /opt/render/.cache/ms-playwright"
+    ls -lah "/opt/render/.cache/ms-playwright" || true
 else
-    echo "⚠️ Directory browser non trovata nel path configurato"
-    echo "🔍 Ricerca browser in path alternativi..."
-    find /opt/render -name "*chromium*" -type d 2>/dev/null | head -5 || true
+    echo "🔍 Ricerca browser in tutti i path..."
+    find /opt/render -name "*chromium*" -type d 2>/dev/null | head -10 || true
+    find $HOME -name "*chromium*" -type d 2>/dev/null | head -10 || true
 fi
 
 echo "🎉 Build completato con successo!"

@@ -1,28 +1,29 @@
 # 🔧 Playwright su Render - Troubleshooting
 
-## ✅ Configurazione Attuale (CONSIGLIATA)
+## ✅ Configurazione Attuale (AGGIORNATA - Ottobre 2025)
 
-La configurazione in `render.yaml` include:
+La configurazione corretta per Render **NON deve forzare** un path personalizzato:
 
-1. **Variabile d'ambiente PLAYWRIGHT_BROWSERS_PATH**: `/opt/render/project/src/.cache/ms-playwright`
-2. **Build command**: Export della variabile + `playwright install --with-deps chromium`
-3. **Argomenti browser**: `--no-sandbox`, `--disable-setuid-sandbox`, etc.
+1. **Nessuna variabile PLAYWRIGHT_BROWSERS_PATH** - Playwright usa il suo path di default
+2. **Build command** (`build.sh`): `playwright install chromium` (senza `--with-deps`)
+3. **Argomenti browser**: `--no-sandbox`, `--disable-setuid-sandbox`, etc. (già nel codice)
+
+### Perché NON usare un path personalizzato?
+
+- Playwright su Render usa automaticamente `/opt/render/.cache/ms-playwright`
+- Forzare un path diverso causa l'errore "Executable doesn't exist"
+- Il path di default funziona meglio su tutti i piani Render
 
 ## 🔴 Se l'errore persiste: "Executable doesn't exist"
 
-### Soluzione A: Rimuovere --with-deps
+### Soluzione Principale: Usa il Path di Default (IMPLEMENTATA)
 
-Se il build fallisce con errori di permessi, modifica `render.yaml`:
+Il file `build.sh` è stato aggiornato per:
+- ✅ Rimuovere `PLAYWRIGHT_BROWSERS_PATH` personalizzato
+- ✅ Usare solo `playwright install chromium` (senza `--with-deps`)
+- ✅ Lasciare che Playwright usi il suo path di default
 
-```yaml
-buildCommand: |
-  export PLAYWRIGHT_BROWSERS_PATH=/opt/render/project/src/.cache/ms-playwright
-  pip install --upgrade pip
-  pip install -r requirements.txt
-  playwright install chromium
-```
-
-**Nota**: Rimuovi `--with-deps`. Gli argomenti browser nel codice Python (`--no-sandbox`, etc.) compensano la mancanza delle dipendenze di sistema complete.
+**Questo dovrebbe risolvere il problema!**
 
 ### Soluzione B: Usare piano Render superiore
 

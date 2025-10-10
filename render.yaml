@@ -30,9 +30,7 @@ services:
         value: "False"
       - key: PYTHONPATH
         value: /opt/render/project/src
-      # CRITICO: Path persistente per i browser Playwright
-      - key: PLAYWRIGHT_BROWSERS_PATH
-        value: /opt/render/project/src/.cache/ms-playwright
+      # NOTA: PLAYWRIGHT_BROWSERS_PATH rimosso - usiamo il path di default per maggiore stabilità
     
     # Configurazione auto-deploy
     autoDeploy: true
