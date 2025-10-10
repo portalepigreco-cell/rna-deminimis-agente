@@ -15,8 +15,8 @@ services:
     plan: standard  # Piano standard per prestazioni ottimali con Playwright
     
     # Configurazione build
-    # Usa script build.sh con fallback automatico per Playwright
-    buildCommand: ./build.sh
+    # Installa dipendenze e browser Playwright (comando inline per maggiore affidabilità)
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt && playwright install --with-deps chromium
     
     # Comando per avviare l'app
     # 1 worker per evitare conflitti con Playwright, timeout 300s per calcoli lunghi
