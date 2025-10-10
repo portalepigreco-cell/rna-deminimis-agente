@@ -269,7 +269,7 @@ def cribis_nuova_ricerca():
             import os
             from cribis_nuova_ricerca import cerca_associate_nuova_procedura
             # Headless su Render/produzione, visibile in locale
-            is_production = os.environ.get('RENDER') or os.environ.get('FLASK_ENV') == 'production'
+            is_production = ('RENDER' in os.environ) or (os.environ.get('FLASK_ENV') == 'production')
             risultato = cerca_associate_nuova_procedura(partita_iva, headless=is_production)
         except Exception as e:
             print(f"⚠️ Errore inizializzazione Cribis Nuova Ricerca: {e}")
