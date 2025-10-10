@@ -2,6 +2,7 @@
 # ============================================
 # 
 # Questo file configura il deployment automatico su Render.com
+# AGGIORNATO: Usa Docker con immagine Playwright ufficiale
 # 
 # Autore: Pigreco Team
 # Data: Ottobre 2025
@@ -10,17 +11,14 @@ services:
   # Servizio Web principale
   - type: web
     name: rna-deminimis-app
-    env: python
+    env: docker  # MODIFICATO: usa Docker invece di Python nativo
     region: frankfurt  # Regione europea per migliori performance in Italia
     plan: standard  # Piano standard per prestazioni ottimali con Playwright
     
-    # Configurazione build
-    # Installa dipendenze e browser Playwright (comando inline per maggiore affidabilità)
-    buildCommand: pip install --upgrade pip && pip install -r requirements.txt && playwright install --with-deps chromium
-    
-    # Comando per avviare l'app
-    # 1 worker per evitare conflitti con Playwright, timeout 300s per calcoli lunghi
-    startCommand: gunicorn --bind 0.0.0.0:$PORT --workers 1 --worker-class sync --timeout 300 wsgi:application
+    # Configurazione Docker
+    # Il Dockerfile usa l'immagine ufficiale Microsoft Playwright
+    # Include già Chromium e tutte le dipendenze di sistema
+    dockerfilePath: ./Dockerfile
     
     # Configurazione ambiente
     envVars:
@@ -28,9 +26,8 @@ services:
         value: production
       - key: FLASK_DEBUG
         value: "False"
-      - key: PYTHONPATH
-        value: /opt/render/project/src
-      # NOTA: PLAYWRIGHT_BROWSERS_PATH rimosso - usiamo il path di default per maggiore stabilità
+      # NOTA: Con Docker, Playwright trova automaticamente i browser
+      # Non servono configurazioni custom di path
     
     # Configurazione auto-deploy
     autoDeploy: true

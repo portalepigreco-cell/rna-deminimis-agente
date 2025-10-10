@@ -1,0 +1,62 @@
+# File da escludere dall'immagine Docker
+# Riduce dimensione e velocizza il build
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentazione locale (non serve nel container)
+*.md
+DEPLOY_RENDER.md
+PLAYWRIGHT_RENDER_TROUBLESHOOTING.md
+SUPPORT_EMAIL_RENDER.txt
+
+# Build script (non serve con Docker)
+build.sh
+
+# Esempi (non servono in produzione)
+esempi/
+
+# Log e cache locali
+*.log
+.cache/
+.pytest_cache/
+
