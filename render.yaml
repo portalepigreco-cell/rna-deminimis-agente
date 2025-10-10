@@ -15,10 +15,8 @@ services:
     plan: standard  # Piano standard per prestazioni ottimali con Playwright
     
     # Configurazione build
-    buildCommand: |
-      pip install --upgrade pip
-      pip install -r requirements.txt
-      playwright install --with-deps chromium
+    # Usa script build.sh con fallback automatico per Playwright
+    buildCommand: ./build.sh
     
     # Comando per avviare l'app
     # 1 worker per evitare conflitti con Playwright, timeout 300s per calcoli lunghi
@@ -32,6 +30,9 @@ services:
         value: "False"
       - key: PYTHONPATH
         value: /opt/render/project/src
+      # CRITICO: Path persistente per i browser Playwright
+      - key: PLAYWRIGHT_BROWSERS_PATH
+        value: /opt/render/project/src/.cache/ms-playwright
     
     # Configurazione auto-deploy
     autoDeploy: true

@@ -66,17 +66,31 @@ class CribisNuovaRicerca:
     def __enter__(self):
         """Context manager entry"""
         self.playwright = sync_playwright().start()
+        
+        # Logging per debug Playwright su Render
+        import os
+        print(f"🔍 DEBUG Playwright (Cribis):")
+        print(f"  - PLAYWRIGHT_BROWSERS_PATH: {os.environ.get('PLAYWRIGHT_BROWSERS_PATH', 'NON IMPOSTATO')}")
+        print(f"  - Headless: {self.headless}")
+        
         # Configurazione browser per ambienti cloud (Render, etc.)
-        self.browser = self.playwright.chromium.launch(
-            headless=self.headless,
-            slow_mo=500 if not self.headless else 0,  # Rallenta per debug
-            args=[
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-                '--disable-gpu'
-            ]
-        )
+        try:
+            self.browser = self.playwright.chromium.launch(
+                headless=self.headless,
+                slow_mo=500 if not self.headless else 0,  # Rallenta per debug
+                args=[
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--disable-gpu'
+                ]
+            )
+            print("✅ Browser Chromium lanciato con successo (Cribis)")
+        except Exception as e:
+            print(f"❌ ERRORE lancio browser (Cribis): {str(e)}")
+            print(f"   Tipo errore: {type(e).__name__}")
+            raise
+            
         self.page = self.browser.new_page()
         return self
         

@@ -37,17 +37,30 @@ class RNACalculator:
         tre_anni_fa = oggi - timedelta(days=3 * 365)
 
         with sync_playwright() as p:
+            # Logging per debug Playwright su Render
+            import os
+            print(f"🔍 DEBUG Playwright:")
+            print(f"  - PLAYWRIGHT_BROWSERS_PATH: {os.environ.get('PLAYWRIGHT_BROWSERS_PATH', 'NON IMPOSTATO')}")
+            print(f"  - Headless: {self.headless}")
+            print(f"  - Chromium path: {p.chromium.executable_path if hasattr(p.chromium, 'executable_path') else 'N/A'}")
+            
             # Configurazione browser per ambienti cloud (Render, etc.)
-            browser = p.chromium.launch(
-                headless=self.headless, 
-                slow_mo=self.slow_mo_ms,
-                args=[
-                    '--no-sandbox',
-                    '--disable-setuid-sandbox',
-                    '--disable-dev-shm-usage',
-                    '--disable-gpu'
-                ]
-            )
+            try:
+                browser = p.chromium.launch(
+                    headless=self.headless, 
+                    slow_mo=self.slow_mo_ms,
+                    args=[
+                        '--no-sandbox',
+                        '--disable-setuid-sandbox',
+                        '--disable-dev-shm-usage',
+                        '--disable-gpu'
+                    ]
+                )
+                print("✅ Browser Chromium lanciato con successo")
+            except Exception as e:
+                print(f"❌ ERRORE lancio browser: {str(e)}")
+                print(f"   Tipo errore: {type(e).__name__}")
+                raise
             page = browser.new_page()
 
             try:
