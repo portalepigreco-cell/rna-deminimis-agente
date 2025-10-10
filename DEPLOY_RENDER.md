@@ -47,7 +47,7 @@ git push -u origin main
 - **Runtime:** `Python 3`
 - **Build Command:** 
   ```bash
-  pip install --upgrade pip && pip install -r requirements.txt && playwright install --with-deps chromium
+  pip install --upgrade pip && pip install -r requirements.txt && playwright install chromium
   ```
 - **Start Command:** `gunicorn --bind 0.0.0.0:$PORT wsgi:application`
 
@@ -107,16 +107,21 @@ Una volta deployata, testa:
 **Problema:** `BrowserType.launch: Executable doesn't exist at /opt/render/.cache/ms-playwright/...`
 
 **Soluzione applicata:**
-1. ✅ Modificato `render.yaml` per usare `playwright install --with-deps chromium`
+1. ✅ Modificato `render.yaml` per usare `playwright install chromium` (senza `--with-deps`)
 2. ✅ Aggiunto argomenti browser per ambienti cloud nel codice Python:
    - `--no-sandbox`
    - `--disable-setuid-sandbox`
    - `--disable-dev-shm-usage`
    - `--disable-gpu`
 
+**Perché NON usare `--with-deps`:**
+- Su Render, `--with-deps` richiede permessi root che non sono disponibili
+- Il piano **Standard** ha già le dipendenze di sistema necessarie
+- Usare solo `playwright install chromium` evita errori di autenticazione
+
 **Se l'errore persiste:**
-- Verifica che il Build Command includa: `playwright install --with-deps chromium`
-- Assicurati di usare il piano **Standard** o superiore (il piano Free potrebbe avere limitazioni)
+- Verifica che il Build Command sia: `pip install --upgrade pip && pip install -r requirements.txt && playwright install chromium`
+- Assicurati di usare il piano **Standard** o superiore (il piano Free ha limitazioni severe)
 
 ### Build fallisce:
 1. Controlla i log nella dashboard Render
