@@ -328,8 +328,8 @@
         
         <div class="mode-selector">
             <button class="mode-btn active" onclick="switchMode('auto')">De Minimis</button>
-            <button class="mode-btn" onclick="switchMode('manual')">Collegate (archivio)</button>
-            <button class="mode-btn" onclick="switchMode('cribis')"> Collegate (Nuova Ricerca)</button>
+            <!-- <button class="mode-btn" onclick="switchMode('manual')">Collegate (archivio)</button> -->
+            <button class="mode-btn" onclick="switchMode('cribis')">Ricerca controllate</button>
         </div>
         
         <!-- Modalità Automatica -->
@@ -349,7 +349,8 @@
             </div>
         </div>
         
-        <!-- Modalità Archivio Cribis -->
+        <!-- Modalità Archivio Cribis - TEMPORANEAMENTE DISABILITATA -->
+        <!-- 
         <div id="manual-mode" class="mode-content">
             <div class="database-info" style="border-left-color: #28a745;">
                 <h3 style="color: #28a745;">🏢 Calcolo Aggregato (con Ricerca Collegate)</h3>
@@ -372,7 +373,6 @@
                 </button>
             </div>
             
-            <!-- Sezione Risultati Archivio -->
             <div id="archivio-results" class="results-section" style="display: none; margin-top: 30px;">
                 <h2 style="color: #28a745; margin-bottom: 20px;">📋 Risultati De Minimis Aggregato</h2>
                 <div id="archivio-results-content"></div>
@@ -384,6 +384,7 @@
                 </div>
             </div>
         </div>
+        -->
         
         <!-- Modalità Cribis - Nuova Ricerca -->
         <div id="cribis-mode" class="mode-content">
@@ -395,17 +396,19 @@
             </div>
             
             <label for="partita-iva-cribis">Partita IVA (singola):</label>
-            <input 
-                type="text" 
-                id="partita-iva-cribis" 
-                placeholder="04703370165" 
-                maxlength="11"
-                style="padding: 15px; font-size: 1.1em; background: #2a2a2a; color: #fff; border: 1px solid #555; border-radius: 8px; width: 100%; margin-bottom: 20px;"
-            >
-            
-            <button class="btn" onclick="avviaNuovaRicercaCribis()" style="background: linear-gradient(135deg, #ff6b6b, #ff8e53);">
-                🏢 Avvia Nuova Ricerca Cribis
-            </button>
+            <div style="display: flex; gap: 15px; align-items: stretch;">
+                <input 
+                    type="text" 
+                    id="partita-iva-cribis" 
+                    placeholder="04703370165" 
+                    maxlength="11"
+                    style="flex: 1; padding: 15px; font-size: 1.1em; background: #2a2a2a; color: #fff; border: 1px solid #555; border-radius: 8px;"
+                >
+                
+                <button class="btn" onclick="avviaNuovaRicercaCribis()" style="flex: 0 0 200px; height: auto; background: linear-gradient(135deg, #ff6b6b, #ff8e53); white-space: nowrap;">
+                    📋 Ricerca in Cribis
+                </button>
+            </div>
         </div>
         
         <div class="loading" id="loading">
