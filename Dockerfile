@@ -2,7 +2,7 @@
 # Usa immagine ufficiale Microsoft Playwright con Python
 # Questa immagine include già Chromium e tutte le dipendenze di sistema
 
-FROM mcr.microsoft.com/playwright/python:v1.48.0-jammy
+FROM mcr.microsoft.com/playwright/python:v1.55.0-jammy
 
 # Imposta directory di lavoro
 WORKDIR /app
@@ -33,4 +33,5 @@ ENV PYTHONUNBUFFERED=1
 # Usa gunicorn con 1 worker per compatibilità Playwright
 # Timeout 300s per operazioni lunghe (scraping RNA)
 CMD gunicorn --bind 0.0.0.0:$PORT --workers 1 --worker-class sync --timeout 300 --access-logfile - --error-logfile - wsgi:application
+
 
