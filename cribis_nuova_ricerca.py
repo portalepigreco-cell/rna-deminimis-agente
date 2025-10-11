@@ -761,7 +761,8 @@ class CribisNuovaRicerca:
                     continue
             
             print("❌ Nessun bottone 'Richiedi' per 'Gruppo Societario' trovato")
-            return False
+            print("ℹ️ Probabilmente la società non ha un gruppo societario disponibile")
+            return "NO_GRUPPO_SOCIETARIO"  # Caso specifico: prodotto non disponibile
             
         except Exception as e:
             print(f"❌ Errore durante richiesta Gruppo Societario: {str(e)}")
@@ -996,7 +997,16 @@ class CribisNuovaRicerca:
                 return risultato
             
             # 5. Richiedi Gruppo Societario (si apre in nuova tab e aspetta caricamento)
-            if not self.richiedi_gruppo_societario():
+            gruppo_result = self.richiedi_gruppo_societario()
+            if gruppo_result == "NO_GRUPPO_SOCIETARIO":
+                # Caso specifico: prodotto non disponibile per questa società
+                risultato["errore"] = None
+                risultato["associate_italiane_controllate"] = []
+                risultato["messaggio"] = "La società non ha collegate"
+                print("ℹ️ Nessun gruppo societario disponibile per questa P.IVA")
+                return risultato
+            elif not gruppo_result:
+                # Errore tecnico generico
                 risultato["errore"] = "Richiesta Gruppo Societario fallita"
                 return risultato
             

@@ -108,9 +108,9 @@ def calcola_deminimis():
             import os
             if os.environ.get('RENDER') or os.environ.get('FLASK_ENV') == 'production':
                 return jsonify({
-                    "errore": "⚠️ Modalità 'Collegato (archivio)' temporaneamente non disponibile in produzione",
-                    "dettaglio": "Utilizza la modalità 'Collegato (Nuova Ricerca)' oppure 'De Minimis' per ricerche singole."
-                }), 503
+                    "errore": "⚠️ Non presente in archivio Pigreco di Cribis",
+                    "dettaglio": "Utilizza la modalità 'Collegato (Nuova Ricerca)' per generare un report in tempo reale."
+                }), 404
             
             partita_iva = data.get('partita_iva', '').strip()
             
@@ -303,6 +303,19 @@ def cribis_nuova_ricerca():
                     "errore": errore_msg,
                     "partita_iva": partita_iva
                 }), 500
+        
+        # Gestione messaggio informativo (es: "La società non ha collegate")
+        if risultato.get("messaggio"):
+            return jsonify({
+                "messaggio": risultato["messaggio"],
+                "partita_iva": partita_iva,
+                "associate_italiane_controllate": [],
+                "riepilogo": {
+                    "numero_associate": 0,
+                    "totale_de_minimis": 0,
+                    "numero_aiuti_totale": 0
+                }
+            }), 200
         
         associate = risultato.get("associate_italiane_controllate", [])
         
