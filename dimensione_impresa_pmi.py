@@ -373,41 +373,64 @@ class CalcolatoreDimensionePMI:
     def _classifica_impresa(self, personale: float, fatturato: float, 
                            attivo: float) -> Dict:
         """
-        Classifica l'impresa secondo soglie UE.
+        Classifica l'impresa secondo soglie UE (Raccomandazione 2003/361/CE).
         
-        Regole:
-        - Micro: personale<10 AND (fatturato≤2M OR attivo≤2M)
-        - Piccola: personale<50 AND (fatturato≤10M OR attivo≤10M)
-        - Media: personale<250 AND (fatturato≤50M OR attivo≤43M)
-        - Grande: altrimenti
+        Regole UE "2 su 3":
+        - Per ogni categoria, ALMENO 2 su 3 criteri devono essere rispettati
+        - I 3 criteri sono: personale, fatturato, bilancio
+        
+        Categorie:
+        - Micro: <10 dipendenti E (fatturato≤2M E bilancio≤2M)
+        - Piccola: <50 dipendenti E (fatturato≤10M E bilancio≤10M)
+        - Media: <250 dipendenti E (fatturato≤50M E bilancio≤43M)
+        - Grande: se 2+ criteri superano le soglie della media
         
         Args:
             personale (float): ULA aggregate
             fatturato (float): Fatturato aggregato
-            attivo (float): Attivo aggregato
+            attivo (float): Attivo/Bilancio aggregato
             
         Returns:
             dict: Classificazione con dettagli soglie
         """
         dimensione = "Grande Impresa"
         
-        # Check Micro
-        if personale < SOGLIE_UE["micro"]["personale"]:
-            if (fatturato <= SOGLIE_UE["micro"]["fatturato"] or 
-                attivo <= SOGLIE_UE["micro"]["attivo"]):
-                dimensione = SOGLIE_UE["micro"]["descrizione"]
+        # Helper: conta quanti criteri rispettano la soglia (ritorna True se almeno 2 su 3)
+        def rispetta_soglia_2su3(pers_soglia, fatt_soglia, att_soglia):
+            criteri_rispettati = 0
+            
+            if personale < pers_soglia:
+                criteri_rispettati += 1
+            if fatturato <= fatt_soglia:
+                criteri_rispettati += 1
+            if attivo <= att_soglia:
+                criteri_rispettati += 1
+            
+            return criteri_rispettati >= 2
+        
+        # Check Micro (almeno 2 su 3 criteri rispettati)
+        if rispetta_soglia_2su3(
+            SOGLIE_UE["micro"]["personale"],
+            SOGLIE_UE["micro"]["fatturato"],
+            SOGLIE_UE["micro"]["attivo"]
+        ):
+            dimensione = SOGLIE_UE["micro"]["descrizione"]
         
         # Check Piccola
-        elif personale < SOGLIE_UE["piccola"]["personale"]:
-            if (fatturato <= SOGLIE_UE["piccola"]["fatturato"] or 
-                attivo <= SOGLIE_UE["piccola"]["attivo"]):
-                dimensione = SOGLIE_UE["piccola"]["descrizione"]
+        elif rispetta_soglia_2su3(
+            SOGLIE_UE["piccola"]["personale"],
+            SOGLIE_UE["piccola"]["fatturato"],
+            SOGLIE_UE["piccola"]["attivo"]
+        ):
+            dimensione = SOGLIE_UE["piccola"]["descrizione"]
         
         # Check Media
-        elif personale < SOGLIE_UE["media"]["personale"]:
-            if (fatturato <= SOGLIE_UE["media"]["fatturato"] or 
-                attivo <= SOGLIE_UE["media"]["attivo"]):
-                dimensione = SOGLIE_UE["media"]["descrizione"]
+        elif rispetta_soglia_2su3(
+            SOGLIE_UE["media"]["personale"],
+            SOGLIE_UE["media"]["fatturato"],
+            SOGLIE_UE["media"]["attivo"]
+        ):
+            dimensione = SOGLIE_UE["media"]["descrizione"]
         
         # Dettaglio soglie rispettate
         soglie_rispettate = {
@@ -441,15 +464,31 @@ class CalcolatoreDimensionePMI:
     
     def _genera_nota_classificazione(self, dimensione: str, personale: float,
                                      fatturato: float, attivo: float) -> str:
-        """Genera nota esplicativa della classificazione"""
+        """Genera nota esplicativa della classificazione con regola 2 su 3"""
+        
+        # Conta quanti criteri rispettano ciascuna soglia
+        def conta_criteri_rispettati(categoria):
+            soglia = SOGLIE_UE[categoria]
+            criteri = 0
+            if personale < soglia["personale"]:
+                criteri += 1
+            if fatturato <= soglia["fatturato"]:
+                criteri += 1
+            if attivo <= soglia["attivo"]:
+                criteri += 1
+            return criteri
+        
         if "Micro" in dimensione:
-            return f"Classificata come Microimpresa: personale<10 ({personale:.1f}) e valori finanziari ridotti"
+            n = conta_criteri_rispettati("micro")
+            return f"Microimpresa (regola 2/3): {n}/3 criteri rispettati (ULA:{personale:.1f}, Fatt:€{fatturato:,.0f}, Bil:€{attivo:,.0f})"
         elif "Piccola" in dimensione:
-            return f"Classificata come Piccola Impresa: personale<50 ({personale:.1f})"
+            n = conta_criteri_rispettati("piccola")
+            return f"Piccola Impresa (regola 2/3): {n}/3 criteri rispettati (ULA:{personale:.1f}, Fatt:€{fatturato:,.0f}, Bil:€{attivo:,.0f})"
         elif "Media" in dimensione:
-            return f"Classificata come Media Impresa: personale<250 ({personale:.1f})"
+            n = conta_criteri_rispettati("media")
+            return f"Media Impresa (regola 2/3): {n}/3 criteri rispettati (ULA:{personale:.1f}, Fatt:€{fatturato:,.0f}, Bil:€{attivo:,.0f})"
         else:
-            return f"Classificata come Grande Impresa: supera le soglie PMI"
+            return f"Grande Impresa: supera le soglie PMI in 2+ criteri (ULA:{personale:.1f}, Fatt:€{fatturato:,.0f}, Bil:€{attivo:,.0f})"
     
     def _stampa_riepilogo(self, risultato: Dict):
         """Stampa riepilogo finale"""
@@ -477,15 +516,198 @@ class CalcolatoreDimensionePMI:
 
 
 # ============================================================================
-# FUNZIONE TEST STANDALONE
+# FUNZIONI TEST
 # ============================================================================
 
-def test_dimensione_pmi():
-    """Test standalone del calcolatore"""
+def test_classificazione_regola_2su3():
+    """
+    Test della logica di classificazione "2 su 3" con dati fittizi.
+    Verifica che la regola UE sia implementata correttamente.
+    """
+    print("\n" + "="*70)
+    print("🧪 TEST LOGICA CLASSIFICAZIONE '2 SU 3'")
+    print("="*70 + "\n")
+    
+    calc = CalcolatoreDimensionePMI(headless=True)
+    
+    # Test case 1: MICROIMPRESA (tutti e 3 i criteri rispettati)
+    print("Test 1: Microimpresa (3/3 criteri)")
+    print("-" * 70)
+    result1 = calc._classifica_impresa(
+        personale=5.0,      # < 10 ✅
+        fatturato=1_500_000,  # ≤ 2M ✅
+        attivo=1_800_000      # ≤ 2M ✅
+    )
+    print(f"   Risultato: {result1['dimensione']}")
+    print(f"   Nota: {result1['note']}\n")
+    assert "Micro" in result1['dimensione'], "Dovrebbe essere Microimpresa!"
+    
+    # Test case 2: MICROIMPRESA (2/3 criteri: personale e fatturato OK, attivo NO)
+    print("Test 2: Microimpresa (2/3 criteri - attivo sforato)")
+    print("-" * 70)
+    result2 = calc._classifica_impresa(
+        personale=8.0,      # < 10 ✅
+        fatturato=1_900_000,  # ≤ 2M ✅
+        attivo=3_000_000      # > 2M ❌ ma OK perché 2/3
+    )
+    print(f"   Risultato: {result2['dimensione']}")
+    print(f"   Nota: {result2['note']}\n")
+    assert "Micro" in result2['dimensione'], "Dovrebbe essere ancora Microimpresa (2/3)!"
+    
+    # Test case 3: PICCOLA IMPRESA (solo 1 criterio micro rispettato, ma 2/3 piccola)
+    print("Test 3: Piccola Impresa (esce da Micro, entra in Piccola)")
+    print("-" * 70)
+    result3 = calc._classifica_impresa(
+        personale=25.0,     # > 10 ❌ micro, < 50 ✅ piccola
+        fatturato=8_000_000,  # > 2M ❌ micro, ≤ 10M ✅ piccola
+        attivo=9_500_000      # > 2M ❌ micro, ≤ 10M ✅ piccola
+    )
+    print(f"   Risultato: {result3['dimensione']}")
+    print(f"   Nota: {result3['note']}\n")
+    assert "Piccola" in result3['dimensione'], "Dovrebbe essere Piccola Impresa!"
+    
+    # Test case 4: MEDIA IMPRESA
+    print("Test 4: Media Impresa")
+    print("-" * 70)
+    result4 = calc._classifica_impresa(
+        personale=180.0,      # < 250 ✅
+        fatturato=45_000_000,   # ≤ 50M ✅
+        attivo=40_000_000       # ≤ 43M ✅
+    )
+    print(f"   Risultato: {result4['dimensione']}")
+    print(f"   Nota: {result4['note']}\n")
+    assert "Media" in result4['dimensione'], "Dovrebbe essere Media Impresa!"
+    
+    # Test case 5: GRANDE IMPRESA (supera 2/3 criteri media)
+    print("Test 5: Grande Impresa (supera soglie PMI)")
+    print("-" * 70)
+    result5 = calc._classifica_impresa(
+        personale=300.0,        # > 250 ❌
+        fatturato=60_000_000,     # > 50M ❌
+        attivo=40_000_000         # ≤ 43M ✅ (ma non basta)
+    )
+    print(f"   Risultato: {result5['dimensione']}")
+    print(f"   Nota: {result5['note']}\n")
+    assert "Grande" in result5['dimensione'], "Dovrebbe essere Grande Impresa!"
+    
+    # Test case 6: EDGE CASE - Esattamente 2/3 criteri al limite
+    print("Test 6: Edge case - Piccola con 2 valori esatti al limite")
+    print("-" * 70)
+    result6 = calc._classifica_impresa(
+        personale=49.9,         # < 50 ✅
+        fatturato=10_000_000,     # = 10M ✅ (≤)
+        attivo=15_000_000         # > 10M ❌
+    )
+    print(f"   Risultato: {result6['dimensione']}")
+    print(f"   Nota: {result6['note']}\n")
+    assert "Piccola" in result6['dimensione'], "Dovrebbe essere Piccola (2/3 al limite)!"
+    
+    print("="*70)
+    print("✅ TUTTI I TEST SUPERATI! Logica '2 su 3' implementata correttamente.")
+    print("="*70 + "\n")
+
+
+def test_aggregazione_con_dati_fittizi():
+    """
+    Test completo con dati fittizi di un gruppo societario.
+    """
+    print("\n" + "="*70)
+    print("🧪 TEST AGGREGAZIONE GRUPPO SOCIETARIO (DATI FITTIZI)")
+    print("="*70 + "\n")
+    
+    calc = CalcolatoreDimensionePMI(headless=True)
+    
+    # Impresa principale
+    principale = {
+        "personale": 15,
+        "fatturato": 3_000_000,
+        "attivo": 2_500_000
+    }
+    
+    # Società collegate (>50%, contano al 100%)
+    collegate = [
+        {
+            "nome": "COLLEGATA 1 SRL",
+            "cf": "12345678901",
+            "personale": 8,
+            "fatturato": 1_500_000,
+            "attivo": 1_200_000,
+            "percentuale": 100.0
+        },
+        {
+            "nome": "COLLEGATA 2 SRL",
+            "cf": "23456789012",
+            "personale": 12,
+            "fatturato": 2_000_000,
+            "attivo": 1_800_000,
+            "percentuale": 75.0  # Anche se 75%, conta come 100%
+        }
+    ]
+    
+    # Società partner (25-50%, contano pro-quota)
+    partner = [
+        {
+            "nome": "PARTNER 1 SPA",
+            "cf": "34567890123",
+            "personale": 20,
+            "fatturato": 4_000_000,
+            "attivo": 3_500_000,
+            "percentuale": 30.0  # Conta al 30%
+        }
+    ]
+    
+    print("📊 DATI INPUT:")
+    print(f"   Principale: {principale['personale']} ULA, €{principale['fatturato']:,}, €{principale['attivo']:,}")
+    print(f"   Collegate ({len(collegate)}): totali da aggregare al 100%")
+    for c in collegate:
+        print(f"      • {c['nome']}: {c['personale']} ULA, €{c['fatturato']:,}")
+    print(f"   Partner ({len(partner)}): totali da aggregare pro-quota")
+    for p in partner:
+        print(f"      • {p['nome']} ({p['percentuale']}%): {p['personale']} ULA, €{p['fatturato']:,}")
+    
+    # Calcola aggregati
+    print("\n📊 CALCOLO AGGREGATI:")
+    aggregati = calc._calcola_aggregati_ue(principale, collegate, partner)
+    
+    print("\n📊 RISULTATO AGGREGAZIONE:")
+    print(f"   Personale totale: {aggregati['personale_totale']} ULA")
+    print(f"   Fatturato totale: €{aggregati['fatturato_totale']:,.2f}")
+    print(f"   Attivo totale: €{aggregati['attivo_totale']:,.2f}")
+    
+    # Classifica
+    print("\n🏆 CLASSIFICAZIONE:")
+    classificazione = calc._classifica_impresa(
+        aggregati['personale_totale'],
+        aggregati['fatturato_totale'],
+        aggregati['attivo_totale']
+    )
+    print(f"   {classificazione['dimensione']}")
+    print(f"   {classificazione['note']}")
+    
+    # Verifica manuale
+    print("\n✅ VERIFICA MANUALE:")
+    pers_atteso = 15 + 8 + 12 + (20 * 0.30)  # 15 + 8 + 12 + 6 = 41
+    fatt_atteso = 3_000_000 + 1_500_000 + 2_000_000 + (4_000_000 * 0.30)  # 7.7M
+    print(f"   Personale atteso: {pers_atteso} → Calcolato: {aggregati['personale_totale']}")
+    print(f"   Fatturato atteso: €{fatt_atteso:,.0f} → Calcolato: €{aggregati['fatturato_totale']:,.2f}")
+    
+    assert aggregati['personale_totale'] == pers_atteso, "Personale aggregato errato!"
+    assert abs(aggregati['fatturato_totale'] - fatt_atteso) < 1, "Fatturato aggregato errato!"
+    
+    print("\n" + "="*70)
+    print("✅ TEST AGGREGAZIONE SUPERATO!")
+    print("="*70 + "\n")
+
+
+def test_dimensione_pmi_live():
+    """Test standalone con P.IVA reale (richiede Cribis)"""
     piva_test = "04143180984"  # Pozzi Milano SPA
     
-    print("🧪 TEST CALCOLATORE DIMENSIONE PMI")
-    print(f"P.IVA test: {piva_test}\n")
+    print("\n" + "="*70)
+    print("🧪 TEST LIVE CON P.IVA REALE")
+    print(f"P.IVA: {piva_test}")
+    print("⚠️  Richiede login Cribis e download Company Card")
+    print("="*70 + "\n")
     
     calc = CalcolatoreDimensionePMI(headless=False)
     risultato = calc.calcola_dimensione(piva_test)
@@ -499,6 +721,26 @@ def test_dimensione_pmi():
 
 
 if __name__ == "__main__":
-    # Esegui test se lanciato direttamente
-    risultato = test_dimensione_pmi()
+    # Menu test
+    print("\n🧪 SUITE TEST DIMENSIONE PMI")
+    print("="*70)
+    print("1. Test logica classificazione '2 su 3' (veloce, senza Cribis)")
+    print("2. Test aggregazione gruppo societario (veloce, senza Cribis)")
+    print("3. Test LIVE con P.IVA reale (lento, richiede Cribis)")
+    print("="*70)
+    
+    scelta = input("\nScegli test (1/2/3 o 'all'): ").strip()
+    
+    if scelta == "1" or scelta == "all":
+        test_classificazione_regola_2su3()
+    
+    if scelta == "2" or scelta == "all":
+        test_aggregazione_con_dati_fittizi()
+    
+    if scelta == "3" or scelta == "all":
+        test_dimensione_pmi_live()
+    
+    if scelta not in ["1", "2", "3", "all"]:
+        print("❌ Scelta non valida. Eseguo test veloce (opzione 1)...")
+        test_classificazione_regola_2su3()
 
