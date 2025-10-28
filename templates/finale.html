@@ -1211,11 +1211,41 @@
             
             // Mostra loading con messaggio dettagliato
             document.getElementById('loading').style.display = 'flex';
-            document.getElementById('loading-text').innerText = 'Download dati in corso... ⏳';
-            document.getElementById('loading-detail').innerText = 'Operazione lunga: 3-5 minuti. Non chiudere la finestra.';
+            document.getElementById('loading-text').innerText = '🚀 Avvio calcolo Dimensione...';
+            document.getElementById('loading-detail').innerText = 'Connessione al server in corso...';
             document.getElementById('results').innerHTML = '';
             
             console.log('🚀 Avvio calcolo Dimensione per P.IVA:', partitaIva);
+            
+            // Simula progresso per dare feedback all'utente
+            setTimeout(() => {
+                if (document.getElementById('loading').style.display === 'flex') {
+                    document.getElementById('loading-text').innerText = '🔍 Estrazione gruppo societario...';
+                    document.getElementById('loading-detail').innerText = 'Ricerca società collegate e partner su Cribis...';
+                }
+            }, 2000);
+            
+            setTimeout(() => {
+                if (document.getElementById('loading').style.display === 'flex') {
+                    document.getElementById('loading-text').innerText = '📊 Download Company Card...';
+                    document.getElementById('loading-detail').innerText = 'Scaricamento dati finanziari per ogni società (3-5 min)...';
+                }
+            }, 8000);
+            
+            setTimeout(() => {
+                if (document.getElementById('loading').style.display === 'flex') {
+                    document.getElementById('loading-text').innerText = '🧮 Calcolo aggregati UE...';
+                    document.getElementById('loading-detail').innerText = 'Applicazione formule Raccomandazione 2003/361/CE...';
+                }
+            }, 15000);
+            
+            // Timeout di sicurezza (10 minuti)
+            setTimeout(() => {
+                if (document.getElementById('loading').style.display === 'flex') {
+                    document.getElementById('loading-text').innerText = '⏰ Calcolo in corso...';
+                    document.getElementById('loading-detail').innerText = 'Operazione più lunga del previsto. Il calcolo continua in background...';
+                }
+            }, 300000); // 5 minuti
             
             try {
                 console.log('📡 Invio richiesta a /calcola_dimensione_pmi...');
@@ -1239,22 +1269,36 @@
                 const data = await response.json();
                 console.log('✅ Dati parsati:', data);
                 
-                // Nascondi loading
-                document.getElementById('loading').style.display = 'none';
+                // Mostra messaggio di completamento prima di nascondere loading
+                document.getElementById('loading-text').innerText = '✅ Calcolo completato!';
+                document.getElementById('loading-detail').innerText = 'Elaborazione risultati...';
                 
-                // Mostra risultati
-                if (data.risultato === 'success') {
-                    console.log('🎉 Successo! Mostro risultati...');
-                    mostraRisultatiPMI(data);
-                } else {
-                    console.log('❌ Errore nei dati:', data.errore);
-                    mostraErrorePMI(data.errore || 'Errore sconosciuto', partitaIva);
-                }
+                // Nascondi loading dopo un breve delay per far vedere il messaggio
+                setTimeout(() => {
+                    document.getElementById('loading').style.display = 'none';
+                    
+                    // Mostra risultati
+                    if (data.risultato === 'success') {
+                        console.log('🎉 Successo! Mostro risultati...');
+                        mostraRisultatiPMI(data);
+                    } else {
+                        console.log('❌ Errore nei dati:', data.errore);
+                        mostraErrorePMI(data.errore || 'Errore sconosciuto', partitaIva);
+                    }
+                }, 1000);
                 
             } catch (error) {
                 console.error('❌ Errore catch:', error);
-                document.getElementById('loading').style.display = 'none';
-                mostraErrorePMI('Errore di connessione: ' + error.message, partitaIva);
+                
+                // Mostra messaggio di errore prima di nascondere loading
+                document.getElementById('loading-text').innerText = '❌ Errore di connessione';
+                document.getElementById('loading-detail').innerText = 'Verifica la connessione e riprova...';
+                
+                // Nascondi loading dopo un breve delay
+                setTimeout(() => {
+                    document.getElementById('loading').style.display = 'none';
+                    mostraErrorePMI('Errore di connessione: ' + error.message, partitaIva);
+                }, 1500);
             }
         }
         
