@@ -117,6 +117,13 @@ class CalcolatoreDimensionePMI:
             print(f"\n2️⃣ DOWNLOAD DATI FINANZIARI")
             print("-" * 70)
             
+            # 🧪 MODALITÀ TEST: limita a 3 società totali per velocità
+            TEST_MODE = True
+            MAX_SOCIETA_TEST = 3
+            
+            if TEST_MODE:
+                print(f"⚠️  MODALITÀ TEST: limito a {MAX_SOCIETA_TEST} società (+ principale)\n")
+            
             # Dati impresa principale
             dati_principale = self._scarica_dati_finanziari(
                 gruppo['principale']['cf'],
@@ -124,17 +131,29 @@ class CalcolatoreDimensionePMI:
             )
             risultato["impresa_principale"].update(dati_principale)
             
+            societa_processate = 0
+            
             # Dati società collegate
             for i, soc in enumerate(risultato["societa_collegate"], 1):
+                if TEST_MODE and societa_processate >= MAX_SOCIETA_TEST:
+                    print(f"\n⏭️  Skip restanti collegate (modalità test)")
+                    break
+                
                 print(f"\n📊 [{i}/{len(risultato['societa_collegate'])}] Collegata: {soc['nome']}")
                 dati = self._scarica_dati_finanziari(soc['cf'], soc['nome'])
                 soc.update(dati)
+                societa_processate += 1
             
             # Dati società partner
             for i, soc in enumerate(risultato["societa_partner"], 1):
+                if TEST_MODE and societa_processate >= MAX_SOCIETA_TEST:
+                    print(f"\n⏭️  Skip restanti partner (modalità test)")
+                    break
+                
                 print(f"\n📊 [{i}/{len(risultato['societa_partner'])}] Partner: {soc['nome']}")
                 dati = self._scarica_dati_finanziari(soc['cf'], soc['nome'])
                 soc.update(dati)
+                societa_processate += 1
             
             # STEP 3: Calcola aggregati UE
             print(f"\n3️⃣ CALCOLO AGGREGATI UE")
@@ -226,7 +245,8 @@ class CalcolatoreDimensionePMI:
             collegate = []
             partner = []
             
-            for soc in risultato_cribis.get("associate", []):
+            # La chiave corretta è "associate_italiane_controllate"
+            for soc in risultato_cribis.get("associate_italiane_controllate", []):
                 # Usa la nuova categorizzazione da cribis_nuova_ricerca
                 categoria = soc.get("categoria", "collegata")
                 percentuale_num = soc.get("percentuale_numerica", 100.0)

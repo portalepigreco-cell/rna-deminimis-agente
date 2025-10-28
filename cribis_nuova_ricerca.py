@@ -1115,6 +1115,25 @@ class CribisNuovaRicerca:
             print(f"📊 Download Company Card Completa per: {codice_fiscale}")
             print(f"{'='*70}\n")
             
+            # STEP 0: Assicurati di essere sulla pagina principale
+            # Chiudi eventuali tab extra e torna alla prima
+            print("🔄 STEP 0: Torna alla pagina principale...")
+            pages = self.browser.contexts[0].pages
+            if len(pages) > 1:
+                # Chiudi tutte le tab tranne la prima
+                for page in pages[1:]:
+                    page.close()
+                self.page = pages[0]
+                print(f"   ✅ Chiuse {len(pages)-1} tab extra, ritorno alla prima")
+            
+            # Naviga alla home se non ci siamo già
+            if "Home" not in self.page.url:
+                print("   🏠 Navigazione a Home...")
+                self.page.goto(f"{self.base_url}/#Home/Index", wait_until="networkidle")
+                self.page.wait_for_timeout(2000)
+            
+            print("   ✅ Sulla pagina principale\n")
+            
             # STEP 1: Ricerca CF
             print("🔍 STEP 1: Ricerca CF...")
             campo_ricerca = self.page.locator('input[title="Inserisci i termini da cercare"]')
