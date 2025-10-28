@@ -330,7 +330,7 @@
             <button class="mode-btn active" onclick="switchMode('auto')">De Minimis</button>
             <!-- <button class="mode-btn" onclick="switchMode('manual')">Collegate (archivio)</button> -->
             <button class="mode-btn" onclick="switchMode('cribis')">Ricerca controllate</button>
-            <button class="mode-btn" onclick="switchMode('pmi')">Dimensione PMI</button>
+            <button class="mode-btn" onclick="switchMode('pmi')">Dimensione</button>
         </div>
         
         <!-- Modalità Automatica -->
@@ -412,10 +412,10 @@
             </div>
         </div>
         
-        <!-- Modalità Dimensione PMI -->
+        <!-- Modalità Dimensione d'Impresa -->
         <div id="pmi-mode" class="mode-content">
             <div class="database-info" style="border-left-color: #9b59b6;">
-                <h3 style="color: #9b59b6;">📊 Dimensione d'Impresa (PMI)</h3>
+                <h3 style="color: #9b59b6;">📊 Dimensione d'Impresa</h3>
                 <p>Calcola la <strong>dimensione d'impresa</strong> secondo la <strong>Raccomandazione UE 2003/361/CE</strong>.</p>
                 <p style="margin-top: 10px; color: #a0a0a0;">✅ Include gruppo societario: collegate (>50%) e partner (25-50%)</p>
                 <p style="margin-top: 5px; font-size: 0.9em;">📈 Classifica: Micro / Piccola / Media / Grande Impresa</p>
@@ -1196,7 +1196,7 @@
         }
         
         // ============================================================================
-        // DIMENSIONE PMI
+        // DIMENSIONE D'IMPRESA
         // ============================================================================
         
         async function avviaCalcoloPMI() {
