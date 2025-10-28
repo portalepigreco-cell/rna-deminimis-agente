@@ -89,9 +89,9 @@ class CalcolatoreDimensionePMI:
             print(f"📊 CALCOLO DIMENSIONE PMI - P.IVA: {partita_iva}")
             print(f"{'='*70}\n")
             
-            # Inizializza connessione Cribis
+            # Inizializza connessione Cribis (usa context manager)
             self.cribis = CribisNuovaRicerca(headless=self.headless)
-            self.cribis._inizializza_browser()
+            self.cribis.__enter__()  # Inizializza browser
             self.cribis.login()
             
             # STEP 1: Estrai gruppo societario completo (collegate + partner)
@@ -186,7 +186,7 @@ class CalcolatoreDimensionePMI:
             
         finally:
             if self.cribis:
-                self.cribis.close()
+                self.cribis.__exit__(None, None, None)  # Chiudi browser
     
     def _estrai_gruppo_completo(self, partita_iva: str) -> Dict:
         """

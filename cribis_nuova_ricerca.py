@@ -1007,24 +1007,28 @@ class CribisNuovaRicerca:
             print(f"🚀 Avvio NUOVA ricerca associate per: {partita_iva}")
             print("="*60)
             
-            # 1. Login
-            if not self.login():
-                risultato["errore"] = "Login fallito"
-                
-                # Invia alert email
-                if EMAIL_ALERTS_ENABLED:
-                    try:
-                        print("📧 Invio alert email per errore login Cribis...")
-                        alert_cribis_error(
-                            partita_iva=partita_iva,
-                            errore="Login fallito - Possibile cambio interfaccia Cribis X",
-                            fase="Login",
-                            screenshot_path="debug_cribis_nuova_01_login_page.png" if os.path.exists("debug_cribis_nuova_01_login_page.png") else None
-                        )
-                    except Exception as email_err:
-                        print(f"⚠️ Errore invio alert email: {email_err}")
-                
-                return risultato
+            # 1. Login (solo se non già loggato)
+            if not self.page or not self.page.url or "cribisx.com" not in self.page.url:
+                print("🔐 Effettuo login...")
+                if not self.login():
+                    risultato["errore"] = "Login fallito"
+                    
+                    # Invia alert email
+                    if EMAIL_ALERTS_ENABLED:
+                        try:
+                            print("📧 Invio alert email per errore login Cribis...")
+                            alert_cribis_error(
+                                partita_iva=partita_iva,
+                                errore="Login fallito - Possibile cambio interfaccia Cribis X",
+                                fase="Login",
+                                screenshot_path="debug_cribis_nuova_01_login_page.png" if os.path.exists("debug_cribis_nuova_01_login_page.png") else None
+                            )
+                        except Exception as email_err:
+                            print(f"⚠️ Errore invio alert email: {email_err}")
+                    
+                    return risultato
+            else:
+                print("✅ Già loggato, skip login")
             
             # 2. Cerca nel campo principale
             if not self.cerca_nel_campo_principale(partita_iva):
