@@ -414,6 +414,182 @@ def cribis_nuova_ricerca():
             "partita_iva": partita_iva
         }), 500
 
+
+@app.route('/calcola_dimensione_pmi', methods=['POST'])
+def calcola_dimensione_pmi():
+    """
+    Calcola la dimensione d'impresa (PMI) secondo Raccomandazione UE 2003/361/CE
+    
+    Input JSON:
+        {
+            "partita_iva": "12345678901"
+        }
+    
+    Output JSON:
+        {
+            "risultato": "success" | "errore",
+            "partita_iva": "12345678901",
+            "classificazione": {
+                "dimensione": "Media Impresa",
+                "note": "...",
+                "soglie_rispettate": {...}
+            },
+            "aggregati_ue": {
+                "personale_totale": 45.5,
+                "fatturato_totale": 15000000,
+                "attivo_totale": 12000000
+            },
+            "gruppo_societario": {
+                "principale": {...},
+                "collegate": [...],
+                "partner": [...]
+            },
+            "societa_senza_dati": [...],
+            "tempo_elaborazione_secondi": 120
+        }
+    """
+    try:
+        data = request.get_json()
+        partita_iva = data.get('partita_iva', '').strip()
+        
+        # Validazione P.IVA
+        if not re.match(r'^\d{11}$', partita_iva):
+            return jsonify({
+                "risultato": "errore",
+                "errore": "P.IVA deve essere di 11 cifre",
+                "partita_iva": partita_iva
+            }), 400
+        
+        print(f"\n{'='*70}")
+        print(f"📊 RICHIESTA CALCOLO DIMENSIONE PMI")
+        print(f"P.IVA: {partita_iva}")
+        print(f"{'='*70}\n")
+        
+        # Import lazy per evitare errori di dipendenze all'avvio
+        try:
+            import os
+            from dimensione_impresa_pmi import CalcolatoreDimensionePMI
+            
+            # Headless su Render/produzione, visibile in locale per debug
+            is_production = ('RENDER' in os.environ) or (os.environ.get('FLASK_ENV') == 'production')
+            
+            print(f"🔧 Modalità: {'PRODUZIONE (headless)' if is_production else 'SVILUPPO (browser visibile)'}")
+            
+            # Inizializza calcolatore
+            calc = CalcolatoreDimensionePMI(headless=is_production)
+            
+        except Exception as e:
+            print(f"⚠️ Errore inizializzazione Calcolatore PMI: {e}")
+            import traceback
+            print(traceback.format_exc())
+            return jsonify({
+                "risultato": "errore",
+                "errore": f"❌ Servizio Dimensione PMI temporaneamente non disponibile: {str(e)}"
+            }), 503
+        
+        # Esegui calcolo
+        try:
+            risultato = calc.calcola_dimensione(partita_iva)
+            
+            # Verifica se c'è un errore
+            if risultato.get("risultato") == "errore":
+                print(f"❌ Errore calcolo: {risultato.get('errore', 'Errore sconosciuto')}")
+                return jsonify({
+                    "risultato": "errore",
+                    "errore": risultato.get("errore", "Errore durante il calcolo"),
+                    "partita_iva": partita_iva
+                }), 500
+            
+            # Successo - formatta risposta per frontend
+            print(f"✅ Calcolo completato con successo!")
+            print(f"   Classificazione: {risultato['classificazione']['dimensione']}")
+            print(f"   Tempo: {risultato['tempo_elaborazione_secondi']}s")
+            
+            # Prepara risposta JSON pulita
+            risposta = {
+                "risultato": "success",
+                "partita_iva": partita_iva,
+                "data_calcolo": risultato["data_calcolo"],
+                
+                # Impresa principale
+                "impresa_principale": {
+                    "cf": risultato["impresa_principale"]["cf"],
+                    "ragione_sociale": risultato["impresa_principale"].get("ragione_sociale", "N/D"),
+                    "personale": risultato["impresa_principale"].get("personale"),
+                    "fatturato": risultato["impresa_principale"].get("fatturato"),
+                    "attivo": risultato["impresa_principale"].get("attivo"),
+                    "anno_riferimento": risultato["impresa_principale"].get("anno_riferimento", "N/D"),
+                    "stato_dati": risultato["impresa_principale"].get("stato_dati", "assenti")
+                },
+                
+                # Gruppo societario
+                "gruppo_societario": {
+                    "collegate": [
+                        {
+                            "cf": soc["cf"],
+                            "nome": soc["nome"],
+                            "percentuale": soc["percentuale"],
+                            "personale": soc.get("personale"),
+                            "fatturato": soc.get("fatturato"),
+                            "attivo": soc.get("attivo"),
+                            "stato_dati": soc.get("stato_dati", "assenti")
+                        }
+                        for soc in risultato.get("societa_collegate", [])
+                    ],
+                    "partner": [
+                        {
+                            "cf": soc["cf"],
+                            "nome": soc["nome"],
+                            "percentuale": soc["percentuale"],
+                            "personale": soc.get("personale"),
+                            "fatturato": soc.get("fatturato"),
+                            "attivo": soc.get("attivo"),
+                            "stato_dati": soc.get("stato_dati", "assenti")
+                        }
+                        for soc in risultato.get("societa_partner", [])
+                    ],
+                    "numero_collegate": len(risultato.get("societa_collegate", [])),
+                    "numero_partner": len(risultato.get("societa_partner", [])),
+                    "totale_societa": len(risultato.get("societa_collegate", [])) + len(risultato.get("societa_partner", []))
+                },
+                
+                # Aggregati UE
+                "aggregati_ue": risultato["aggregati_ue"],
+                
+                # Classificazione
+                "classificazione": risultato["classificazione"],
+                
+                # Società senza dati
+                "societa_senza_dati": risultato.get("societa_senza_dati", []),
+                
+                # Metadati
+                "tempo_elaborazione_secondi": risultato["tempo_elaborazione_secondi"],
+                "fonte": "Cribis X + Raccomandazione UE 2003/361/CE"
+            }
+            
+            return jsonify(risposta), 200
+            
+        except Exception as e:
+            print(f"❌ Errore durante il calcolo: {str(e)}")
+            import traceback
+            print(traceback.format_exc())
+            
+            return jsonify({
+                "risultato": "errore",
+                "errore": f"Errore durante il calcolo: {str(e)}",
+                "partita_iva": partita_iva
+            }), 500
+    
+    except Exception as e:
+        import traceback
+        print(f"❌ Errore generale endpoint PMI: {traceback.format_exc()}")
+        return jsonify({
+            "risultato": "errore",
+            "errore": f"Errore del server: {str(e)}",
+            "partita_iva": partita_iva if 'partita_iva' in locals() else "N/D"
+        }), 500
+
+
 if __name__ == '__main__':
     import os
     

@@ -117,12 +117,15 @@ class CalcolatoreDimensionePMI:
             print(f"\n2️⃣ DOWNLOAD DATI FINANZIARI")
             print("-" * 70)
             
-            # 🧪 MODALITÀ TEST: limita a 3 società totali per velocità
-            TEST_MODE = True
+            # 🧪 MODALITÀ TEST: limita a 3 società per velocità (disabilitato in produzione)
+            import os
+            TEST_MODE = not (('RENDER' in os.environ) or (os.environ.get('FLASK_ENV') == 'production'))
             MAX_SOCIETA_TEST = 3
             
             if TEST_MODE:
-                print(f"⚠️  MODALITÀ TEST: limito a {MAX_SOCIETA_TEST} società (+ principale)\n")
+                print(f"⚠️  MODALITÀ TEST (locale): limito a {MAX_SOCIETA_TEST} società (+ principale)\n")
+            else:
+                print(f"🚀 MODALITÀ PRODUZIONE: processo TUTTE le società del gruppo\n")
             
             # Dati impresa principale
             dati_principale = self._scarica_dati_finanziari(
