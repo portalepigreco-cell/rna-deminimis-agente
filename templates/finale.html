@@ -504,12 +504,15 @@
             }
         }
         
+        // Variabile globale per risultato Archivio
+        let risultatoArchivioGlobale = null;
+        
         function mostraRisultatiArchivio(risultato) {
             const resultsDiv = document.getElementById('archivio-results-content');
             resultsDiv.innerHTML = '';
             document.getElementById('archivio-results').style.display = 'block';
             
-            const risultatoJson = JSON.stringify(risultato).replace(/"/g, '&quot;');
+            risultatoArchivioGlobale = risultato;  // Salva globalmente
             
             let htmlContent = `
                 <div class="result-card ${risultato.stato}">
@@ -522,7 +525,7 @@
                         </span>
                         <h3 style="margin: 0;">${risultato.partita_iva}</h3>
                         <div style="margin-left: auto;">
-                            <button onclick='copiaMarkdownArchivio(${risultatoJson})' 
+                            <button onclick="copiaMarkdownArchivioGlobal()" 
                                 style="padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: 600;">
                                 📋 Copia Markdown
                             </button>
@@ -636,6 +639,14 @@
             
             htmlContent += `</div>`;
             resultsDiv.innerHTML = htmlContent;
+        }
+        
+        function copiaMarkdownArchivioGlobal() {
+            if (!risultatoArchivioGlobale) {
+                alert('❌ Errore: dati non trovati');
+                return;
+            }
+            copiaMarkdownArchivio(risultatoArchivioGlobale);
         }
         
         function copiaMarkdownArchivio(risultato) {
@@ -759,6 +770,21 @@
             return markdown;
         }
         
+        function copiaMarkdownByIndex(index) {
+            const risultato = risultatiGlobali[index];
+            if (!risultato) {
+                alert('❌ Errore: risultato non trovato');
+                return;
+            }
+            const markdown = generaMarkdown(risultato);
+            
+            navigator.clipboard.writeText(markdown).then(() => {
+                alert('✅ Risultato copiato in formato Markdown!');
+            }).catch(err => {
+                alert('❌ Errore nella copia: ' + err);
+            });
+        }
+        
         function copiaMarkdown(risultato) {
             const markdown = generaMarkdown(risultato);
             
@@ -769,12 +795,16 @@
             });
         }
         
+        // Variabile globale per memorizzare i risultati
+        let risultatiGlobali = [];
+        
         function mostraRisultati(risultati) {
             const resultsDiv = document.getElementById('results');
+            risultatiGlobali = risultati;  // Salva i risultati globalmente
             
             let html = '<h2>📋 Risultati De Minimis</h2>';
             
-            risultati.forEach(risultato => {
+            risultati.forEach((risultato, index) => {
                 let cssClass = 'result-item';
                 let amountClass = 'amount';
                 let statusIcon = '';
@@ -807,8 +837,7 @@
                 
                 // Aggiungi bottone Copia Markdown se ci sono dati validi
                 if (!risultato.errore && risultato.aiuti_trovati) {
-                    const risultatoJson = JSON.stringify(risultato).replace(/"/g, '&quot;');
-                    html += `<button onclick='copiaMarkdown(${risultatoJson})' 
+                    html += `<button onclick="copiaMarkdownByIndex(${index})" 
                         style="padding: 8px 16px; background: #4a9eff; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: 600;">
                         📋 Copia Markdown
                     </button>`;
@@ -958,12 +987,15 @@
             }
         }
         
+        // Variabile globale per risultato Cribis
+        let risultatoCribisGlobale = null;
+        
         function mostraRisultatiCribis(data) {
             const resultsDiv = document.getElementById('results');
             resultsDiv.innerHTML = '';
             resultsDiv.style.display = 'block';
             
-            const dataJson = JSON.stringify(data).replace(/"/g, '&quot;');
+            risultatoCribisGlobale = data;  // Salva globalmente
             
             let htmlContent = `
                 <h2 style="color: #ff6b6b; margin-bottom: 20px;">📋 Risultati De Minimis Aggregato</h2>
@@ -977,7 +1009,7 @@
                         </span>
                         <h3 style="margin: 0;">${data.partita_iva}</h3>
                         <div style="margin-left: auto;">
-                            <button onclick='copiaMarkdownCribis(${dataJson})' 
+                            <button onclick="copiaMarkdownCribisGlobal()" 
                                 style="padding: 8px 16px; background: #ff6b6b; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: 600;">
                                 📋 Copia Markdown
                             </button>
@@ -1079,6 +1111,14 @@
             
             htmlContent += `</div>`;
             resultsDiv.innerHTML = htmlContent;
+        }
+        
+        function copiaMarkdownCribisGlobal() {
+            if (!risultatoCribisGlobale) {
+                alert('❌ Errore: dati non trovati');
+                return;
+            }
+            copiaMarkdownCribis(risultatoCribisGlobale);
         }
         
         function copiaMarkdownCribis(data) {
