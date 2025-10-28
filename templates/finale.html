@@ -1103,8 +1103,8 @@
                 data.tutti_aiuti.forEach(aiuto => {
                     const importoFormat = formatEuro(aiuto.importo).replace('€', '€ ');
                     const titolo = aiuto.titolo_misura || 'N/A';
-                    const data = aiuto.data_concessione || aiuto.data;
-                    markdown += `| ${data} | ${importoFormat} | ${titolo} | ${aiuto.societa_cf} |\n`;
+                    const dataAiuto = aiuto.data_concessione || aiuto.data;
+                    markdown += `| ${dataAiuto} | ${importoFormat} | ${titolo} | ${aiuto.societa_cf} |\n`;
                 });
                 markdown += `\n`;
             } else {
