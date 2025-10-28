@@ -440,7 +440,8 @@
         
         <div class="loading" id="loading">
             <div class="spinner"></div>
-            <p>Elaborazione in corso... ⏳</p>
+            <p id="loading-text">Elaborazione in corso... ⏳</p>
+            <p id="loading-detail" style="font-size: 0.9em; color: #a0a0a0; margin-top: 10px;"></p>
         </div>
         
         <div class="results" id="results"></div>
@@ -1208,11 +1209,17 @@
                 return;
             }
             
-            // Mostra loading
+            // Mostra loading con messaggio dettagliato
             document.getElementById('loading').style.display = 'flex';
+            document.getElementById('loading-text').innerText = 'Download dati in corso... ⏳';
+            document.getElementById('loading-detail').innerText = 'Operazione lunga: 3-5 minuti. Non chiudere la finestra.';
             document.getElementById('results').innerHTML = '';
             
+            console.log('🚀 Avvio calcolo Dimensione per P.IVA:', partitaIva);
+            
             try {
+                console.log('📡 Invio richiesta a /calcola_dimensione_pmi...');
+                
                 const response = await fetch('/calcola_dimensione_pmi', {
                     method: 'POST',
                     headers: {
@@ -1223,19 +1230,29 @@
                     })
                 });
                 
+                console.log('📥 Risposta ricevuta, status:', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
                 const data = await response.json();
+                console.log('✅ Dati parsati:', data);
                 
                 // Nascondi loading
                 document.getElementById('loading').style.display = 'none';
                 
                 // Mostra risultati
                 if (data.risultato === 'success') {
+                    console.log('🎉 Successo! Mostro risultati...');
                     mostraRisultatiPMI(data);
                 } else {
+                    console.log('❌ Errore nei dati:', data.errore);
                     mostraErrorePMI(data.errore || 'Errore sconosciuto', partitaIva);
                 }
                 
             } catch (error) {
+                console.error('❌ Errore catch:', error);
                 document.getElementById('loading').style.display = 'none';
                 mostraErrorePMI('Errore di connessione: ' + error.message, partitaIva);
             }
