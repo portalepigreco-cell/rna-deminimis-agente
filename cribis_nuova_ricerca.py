@@ -885,85 +885,71 @@ class CribisNuovaRicerca:
                 f.write(body_text)
             print(f"💾 Testo salvato: debug_cribis_nuova_testo.txt ({len(body_text)} caratteri)")
             
-            # Pattern per codici fiscali italiani (11 cifre)
-            cf_pattern = r'Cod\.\s*Fisc\.\s*:\s*(\d{11})'
-            codici_fiscali = re.findall(cf_pattern, body_text)
+            # Pattern migliorato: cattura Nome + CF + percentuale in un colpo solo
+            # Formato: "NOME SOCIETA\nCod. Fisc.: 12345678901 - Italia\n...%"
+            pattern_societa = r'(?:^|\n)(?:\d+(?:\.\d+)?\s+)?([A-Z][A-Z\s\.\-&]+?)\s*\n\s*Cod\.\s*Fisc\.\s*:\s*(\d{11})\s*-\s*Italia'
             
-            print(f"🔍 Trovati {len(codici_fiscali)} codici fiscali: {codici_fiscali}")
+            matches = re.findall(pattern_societa, body_text, re.MULTILINE)
+            print(f"🔍 Trovate {len(matches)} società italiane nel gruppo")
             
-            # Per ogni codice fiscale, cerca il contesto
-            for cf in codici_fiscali:
+            # Dizionario CF -> Nome per lookup veloce
+            cf_to_nome = {}
+            for nome, cf in matches:
+                nome_pulito = nome.strip()
+                # Rimuove numeri iniziali e spazi extra
+                nome_pulito = re.sub(r'^\d+(?:\.\d+)?\s+', '', nome_pulito).strip()
+                cf_to_nome[cf] = nome_pulito
+                print(f"   • {cf}: {nome_pulito}")
+            
+            # Estrae tutte le occorrenze di CF + percentuale
+            # Pattern: "Cod. Fisc.: 12345678901 - Italia" seguito da percentuale
+            cf_perc_pattern = r'Cod\.\s*Fisc\.\s*:\s*(\d{11})\s*-\s*Italia.*?(\d+(?:\.\d+)?)\s*%'
+            cf_percentuali = re.findall(cf_perc_pattern, body_text, re.DOTALL)
+            
+            print(f"\n🔍 Trovate {len(cf_percentuali)} occorrenze CF + percentuale")
+            
+            # Processa ogni coppia (CF, percentuale)
+            for cf, perc_str in cf_percentuali:
                 try:
-                    # Trova elementi che contengono questo CF
-                    cf_elements = self.page.locator(f"*:has-text('{cf}')").all()
+                    percentuale_numerica = float(perc_str)
                     
-                    for element in cf_elements:
-                        try:
-                            element_text = element.inner_text()
-                            
-                            # DEVE contenere "Italia" per essere italiana
-                            if "Italia" not in element_text:
-                                continue
-                            
-                            # Estrae nome società (riga prima di "Cod. Fisc.")
-                            lines = element_text.split('\n')
-                            nome = "SOCIETÀ NON IDENTIFICATA"
-                            
-                            for i, line in enumerate(lines):
-                                if "Cod. Fisc." in line and i > 0:
-                                    nome = lines[i-1].strip()
-                                    # Rimuove numeri iniziali (es: "1 MARTENS ITALIA SRL" → "MARTENS ITALIA SRL")
-                                    nome = re.sub(r'^\d+\.?\d*\s*', '', nome)
-                                    break
-                            
-                            # Cerca percentuali nel testo (formato X% o XX.X%)
-                            percentuali = re.findall(r'(\d+(?:\.\d+)?)\s*%', element_text)
-                            
-                            # Verifica quota rilevante (≥25% per PMI)
-                            # >50% = collegata, 25-50% = partner
-                            categoria = None
-                            percentuale_numerica = None
-                            percentuale_str = "N/A"
-                            
-                            for p in percentuali:
-                                try:
-                                    perc_val = float(p)
-                                    if perc_val >= 25:  # Soglia minima per calcolo PMI
-                                        percentuale_numerica = perc_val
-                                        percentuale_str = f"{perc_val}%"
-                                        
-                                        if perc_val > 50:
-                                            categoria = "collegata"
-                                        else:
-                                            categoria = "partner"
-                                        break
-                                except:
-                                    continue
-                            
-                            print(f"\n📊 Analisi CF {cf}:")
-                            print(f"   Nome: {nome}")
-                            print(f"   Italiana: ✅")
-                            print(f"   Quota: {percentuale_str}")
-                            print(f"   Categoria: {categoria or 'Non rilevante (<25%)'}")
-                            
-                            # Aggiunge se quota ≥25% (collegata o partner)
-                            if categoria:
-                                # Evita duplicati
-                                if not any(a["cf"] == cf for a in associate):
-                                    associate.append({
-                                        "ragione_sociale": nome.upper(),
-                                        "cf": cf,
-                                        "percentuale": percentuale_str,
-                                        "percentuale_numerica": percentuale_numerica,
-                                        "categoria": categoria
-                                    })
-                                    emoji = "🔗" if categoria == "collegata" else "🤝"
-                                    print(f"   ✅ {emoji} AGGIUNTA: {nome} ({categoria})")
-                            
-                        except Exception as e:
-                            continue
-                            
+                    # Verifica quota rilevante (≥25% per PMI)
+                    if percentuale_numerica < 25:
+                        continue
+                    
+                    # Determina categoria
+                    if percentuale_numerica > 50:
+                        categoria = "collegata"
+                    else:
+                        categoria = "partner"
+                    
+                    # Recupera nome (se disponibile, altrimenti usa nome generico)
+                    nome = cf_to_nome.get(cf, f"SOCIETÀ {cf}")
+                    
+                    percentuale_str = f"{percentuale_numerica}%"
+                    
+                    print(f"\n📊 Analisi CF {cf}:")
+                    print(f"   Nome: {nome}")
+                    print(f"   Italiana: ✅")
+                    print(f"   Quota: {percentuale_str}")
+                    print(f"   Categoria: {categoria}")
+                    
+                    # Evita duplicati
+                    if not any(a["cf"] == cf for a in associate):
+                        associate.append({
+                            "ragione_sociale": nome.upper(),
+                            "cf": cf,
+                            "percentuale": percentuale_str,
+                            "percentuale_numerica": percentuale_numerica,
+                            "categoria": categoria
+                        })
+                        emoji = "🔗" if categoria == "collegata" else "🤝"
+                        print(f"   ✅ {emoji} AGGIUNTA: {nome} ({categoria})")
+                    else:
+                        print(f"   ⚠️  Già presente, skip duplicato")
+                
                 except Exception as e:
+                    print(f"   ❌ Errore processamento CF {cf}: {e}")
                     continue
             
             # Separa collegate e partner
