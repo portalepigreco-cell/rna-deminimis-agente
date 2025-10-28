@@ -21,7 +21,7 @@ class CribisXPlaywright:
         """
         self.base_url = "https://www2.cribisx.com"
         self.username = "CC838673"
-        self.password = "26082025__Pigreco_"
+        self.password = "27_10_2025__Pigreco_"
         self.headless = headless
         self.playwright = None
         self.browser = None

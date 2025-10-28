@@ -24,7 +24,16 @@ Differenza con cribis_playwright_base.py:
 import json
 import re
 import time
+import os
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeout
+
+# Import sistema alert email
+try:
+    from email_alert import alert_cribis_error
+    EMAIL_ALERTS_ENABLED = True
+except ImportError:
+    EMAIL_ALERTS_ENABLED = False
+    print("⚠️ Modulo email_alert non disponibile - alert disabilitati")
 
 
 class CribisNuovaRicerca:
@@ -39,7 +48,7 @@ class CribisNuovaRicerca:
         """
         self.base_url = "https://www2.cribisx.com"
         self.username = "CC838673"
-        self.password = "26082025__Pigreco_"
+        self.password = "27_10_2025__Pigreco_"
         self.headless = headless
         self.playwright = None
         self.browser = None
@@ -979,16 +988,58 @@ class CribisNuovaRicerca:
             # 1. Login
             if not self.login():
                 risultato["errore"] = "Login fallito"
+                
+                # Invia alert email
+                if EMAIL_ALERTS_ENABLED:
+                    try:
+                        print("📧 Invio alert email per errore login Cribis...")
+                        alert_cribis_error(
+                            partita_iva=partita_iva,
+                            errore="Login fallito - Possibile cambio interfaccia Cribis X",
+                            fase="Login",
+                            screenshot_path="debug_cribis_nuova_01_login_page.png" if os.path.exists("debug_cribis_nuova_01_login_page.png") else None
+                        )
+                    except Exception as email_err:
+                        print(f"⚠️ Errore invio alert email: {email_err}")
+                
                 return risultato
             
             # 2. Cerca nel campo principale
             if not self.cerca_nel_campo_principale(partita_iva):
                 risultato["errore"] = "Ricerca nel campo principale fallita"
+                
+                # Invia alert email
+                if EMAIL_ALERTS_ENABLED:
+                    try:
+                        print("📧 Invio alert email per errore ricerca Cribis...")
+                        alert_cribis_error(
+                            partita_iva=partita_iva,
+                            errore="Campo ricerca principale non trovato - Possibile cambio interfaccia",
+                            fase="Ricerca P.IVA",
+                            screenshot_path="debug_cribis_nuova_02_dopo_login.png" if os.path.exists("debug_cribis_nuova_02_dopo_login.png") else None
+                        )
+                    except Exception as email_err:
+                        print(f"⚠️ Errore invio alert email: {email_err}")
+                
                 return risultato
             
             # 3. Clicca sul NOME dell'azienda (primo risultato)
             if not self.clicca_nome_primo_risultato():
                 risultato["errore"] = "Click nome azienda fallito"
+                
+                # Invia alert email
+                if EMAIL_ALERTS_ENABLED:
+                    try:
+                        print("📧 Invio alert email per errore click nome...")
+                        alert_cribis_error(
+                            partita_iva=partita_iva,
+                            errore="Nome azienda nel primo risultato non trovato - Layout risultati cambiato",
+                            fase="Selezione Risultato",
+                            screenshot_path="debug_cribis_nuova_04_risultati_cerca.png" if os.path.exists("debug_cribis_nuova_04_risultati_cerca.png") else None
+                        )
+                    except Exception as email_err:
+                        print(f"⚠️ Errore invio alert email: {email_err}")
+                
                 return risultato
             
             # 4. Nella pagina dettaglio, clicca "Tutti i prodotti CRIBIS X"
@@ -1021,6 +1072,20 @@ class CribisNuovaRicerca:
         except Exception as e:
             print(f"❌ Errore generale ricerca associate: {str(e)}")
             risultato["errore"] = str(e)
+            
+            # Invia alert per errore generico non gestito
+            if EMAIL_ALERTS_ENABLED:
+                try:
+                    print("📧 Invio alert email per errore generico Cribis...")
+                    alert_cribis_error(
+                        partita_iva=partita_iva,
+                        errore=f"Errore non gestito: {str(e)}",
+                        fase="Errore Generico",
+                        screenshot_path="debug_cribis_nuova_12_albero.png" if os.path.exists("debug_cribis_nuova_12_albero.png") else None
+                    )
+                except Exception as email_err:
+                    print(f"⚠️ Errore invio alert email: {email_err}")
+            
             return risultato
 
 

@@ -1,0 +1,82 @@
+Subject: Playwright Browser Not Found After Successful Build - Need Assistance
+
+Dear Render Support Team,
+
+I'm experiencing a persistent issue with Playwright on my Python web service deployed on Render. The browser executables are not found at runtime, despite the build completing successfully.
+
+**ERROR MESSAGE:**
+```
+BrowserType.launch: Executable doesn't exist at /opt/render/.cache/ms-playwright/chromium_headless_shell-1187/chrome-linux/headless_shell
+```
+
+**CURRENT CONFIGURATION:**
+
+Service Details:
+- Service name: rna-deminimis-agente
+- Plan: Standard
+- Region: Frankfurt
+- Runtime: Python 3.13
+- Repository: https://github.com/portalepigreco-cell/rna-deminimis-agente
+
+Build Command (in render.yaml):
+```yaml
+buildCommand: pip install --upgrade pip && pip install -r requirements.txt && playwright install --with-deps chromium
+```
+
+Start Command:
+```yaml
+startCommand: gunicorn --bind 0.0.0.0:$PORT --workers 1 --worker-class sync --timeout 300 wsgi:application
+```
+
+**WHAT I'VE TRIED:**
+
+1. ✅ Using `playwright install chromium` (without --with-deps)
+2. ✅ Using `playwright install --with-deps chromium`
+3. ✅ Setting custom PLAYWRIGHT_BROWSERS_PATH environment variable
+4. ✅ Using default Playwright browser path
+5. ✅ Adding browser launch arguments: --no-sandbox, --disable-setuid-sandbox, --disable-dev-shm-usage
+6. ✅ Using build.sh script vs inline build command
+7. ✅ Multiple redeploys with cache clearing
+
+**OBSERVATIONS:**
+
+- The build logs show `playwright install` command executes
+- No explicit errors during the build phase
+- The error only appears at runtime when the application tries to launch the browser
+- The path `/opt/render/.cache/ms-playwright/` suggests Playwright is trying to use its default cache location
+
+**QUESTIONS:**
+
+1. Does Render's filesystem preserve files installed in `/opt/render/.cache/` between build and runtime?
+2. Are there any known compatibility issues with Playwright on the Standard plan?
+3. Should I switch to a Docker-based deployment for better Playwright compatibility?
+4. Are there specific system dependencies missing that `--with-deps` doesn't install?
+5. Can you check my build logs to see if the browsers are actually being downloaded during build?
+
+**WHAT I NEED:**
+
+I need to run Playwright/Chromium headless browser for web scraping as a core feature of my application. I'm willing to:
+- Upgrade to a higher plan if needed
+- Switch to Docker deployment if that's more reliable
+- Modify the configuration as recommended by your team
+
+Could you please:
+1. Review my service's build logs to verify if browsers are being installed correctly
+2. Advise on the recommended approach for Playwright on Render
+3. Provide any Render-specific configuration examples for Playwright if available
+
+**ADDITIONAL CONTEXT:**
+
+This is a production application for calculating "De Minimis" state aid from Italian government databases (RNA.gov.it). The web scraping functionality is essential for the service.
+
+I appreciate your assistance in resolving this issue. Please let me know if you need any additional information or access to my service logs.
+
+Thank you for your time and support.
+
+Best regards,
+Marco Cassani
+
+---
+Service URL: https://rna-deminimis-agente.onrender.com
+GitHub Repository: https://github.com/portalepigreco-cell/rna-deminimis-agente
+

@@ -8,7 +8,16 @@ from datetime import datetime, timedelta
 import re
 import io
 import csv
+import os
 from playwright.sync_api import sync_playwright
+
+# Import sistema alert email
+try:
+    from email_alert import alert_rna_error
+    EMAIL_ALERTS_ENABLED = True
+except ImportError:
+    EMAIL_ALERTS_ENABLED = False
+    print("⚠️ Modulo email_alert non disponibile - alert disabilitati")
 
 
 class RNACalculator:
@@ -519,8 +528,31 @@ class RNACalculator:
                 return risultato
 
             except Exception as e:
+                errore_msg = f"Errore Playwright: {e}"
+                
+                # Invia alert email se abilitato
+                if EMAIL_ALERTS_ENABLED:
+                    try:
+                        # Verifica se è un errore critico (selettori non funzionano)
+                        errore_str = str(e).lower()
+                        if any(keyword in errore_str for keyword in ['timeout', 'selector', 'element', 'not found']):
+                            print("📧 Invio alert email per errore critico RNA...")
+                            alert_rna_error(
+                                partita_iva=partita_iva,
+                                errore=errore_msg,
+                                dettagli={
+                                    "Tipo Errore": type(e).__name__,
+                                    "URL": self.url,
+                                    "Browser": "Chromium/Playwright",
+                                    "Headless": str(self.headless)
+                                },
+                                screenshot_path="debug_rna_post_submit.png" if os.path.exists("debug_rna_post_submit.png") else None
+                            )
+                    except Exception as email_err:
+                        print(f"⚠️ Errore invio alert email: {email_err}")
+                
                 return {
-                    "errore": f"Errore Playwright: {e}",
+                    "errore": errore_msg,
                     "partita_iva": partita_iva,
                     "totale_de_minimis": 0.0,
                     "numero_aiuti": 0,
