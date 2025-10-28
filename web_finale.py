@@ -592,7 +592,7 @@ def calcola_dimensione_pmi():
             }
             
             return jsonify(risposta), 200
-        
+            
         except Exception as e:
             print(f"❌ Errore generale endpoint PMI: {str(e)}")
             import traceback
@@ -602,13 +602,22 @@ def calcola_dimensione_pmi():
                 "errore": f"Errore del server: {str(e)}",
                 "partita_iva": partita_iva
             }), 500
-        
-        finally:
-            # ========== RILASCIO LOCK (SEMPRE) ==========
-            calcolo_in_corso["attivo"] = False
-            calcolo_in_corso["partita_iva"] = None
-            lock_calcolo_pmi.release()
-            print("🔓 Lock rilasciato, sistema disponibile per nuove richieste\n")
+            
+    except Exception as e:
+        import traceback
+        print(f"❌ Errore generale endpoint PMI: {traceback.format_exc()}")
+        return jsonify({
+            "risultato": "errore",
+            "errore": f"Errore del server: {str(e)}",
+            "partita_iva": partita_iva if 'partita_iva' in locals() else "N/D"
+        }), 500
+    
+    finally:
+        # ========== RILASCIO LOCK (SEMPRE) ==========
+        calcolo_in_corso["attivo"] = False
+        calcolo_in_corso["partita_iva"] = None
+        lock_calcolo_pmi.release()
+        print("🔓 Lock rilasciato, sistema disponibile per nuove richieste\n")
 
 
 if __name__ == '__main__':
