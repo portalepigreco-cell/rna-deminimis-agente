@@ -14,12 +14,17 @@ from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
 import re
 from datetime import datetime
+import threading
 
 app = Flask(__name__)
 CORS(app)
 
 # Istanza globale del calcolatore PMI (per riutilizzare la sessione browser)
 calcolatore_pmi_globale = None
+# Lock per evitare richieste concorrenti (browser non è thread-safe)
+lock_calcolo_pmi = threading.Lock()
+# Traccia stato calcolo in corso
+calcolo_in_corso = {"attivo": False, "partita_iva": None}
 
 # Database precaricato con i risultati che abbiamo già testato
 DATABASE_PIVA = {
@@ -463,13 +468,30 @@ def calcola_dimensione_pmi():
                 "partita_iva": partita_iva
             }), 400
         
-        print(f"\n{'='*70}")
-        print(f"📊 RICHIESTA CALCOLO DIMENSIONE PMI")
-        print(f"P.IVA: {partita_iva}")
-        print(f"{'='*70}\n")
+        # ⚠️ CONTROLLO CONCORRENZA: Solo 1 calcolo alla volta
+        if not lock_calcolo_pmi.acquire(blocking=False):
+            # Lock occupato = c'è già un calcolo in corso
+            piva_in_corso = calcolo_in_corso.get("partita_iva", "sconosciuta")
+            print(f"⚠️ Richiesta RIFIUTATA: calcolo già in corso per P.IVA {piva_in_corso}")
+            return jsonify({
+                "risultato": "errore",
+                "errore": f"⏳ Sistema occupato: calcolo in corso per un'altra azienda ({piva_in_corso}). Riprova tra qualche minuto.",
+                "tipo_errore": "sistema_occupato",
+                "partita_iva_in_corso": piva_in_corso
+            }), 503  # Service Unavailable
         
-        # Import lazy per evitare errori di dipendenze all'avvio
+        # Lock acquisito ✅
+        calcolo_in_corso["attivo"] = True
+        calcolo_in_corso["partita_iva"] = partita_iva
+        
         try:
+            # ========== BLOCCO PROTETTO DAL LOCK ==========
+            print(f"\n{'='*70}")
+            print(f"📊 RICHIESTA CALCOLO DIMENSIONE PMI")
+            print(f"P.IVA: {partita_iva}")
+            print(f"{'='*70}\n")
+            
+            # Import lazy per evitare errori di dipendenze all'avvio
             import os
             from dimensione_impresa_pmi import CalcolatoreDimensionePMI
             
@@ -490,17 +512,7 @@ def calcola_dimensione_pmi():
             
             calc = calcolatore_pmi_globale
             
-        except Exception as e:
-            print(f"⚠️ Errore inizializzazione Calcolatore PMI: {e}")
-            import traceback
-            print(traceback.format_exc())
-            return jsonify({
-                "risultato": "errore",
-                "errore": f"❌ Servizio Dimensione PMI temporaneamente non disponibile: {str(e)}"
-            }), 503
-        
-        # Esegui calcolo
-        try:
+            # Esegui calcolo
             risultato = calc.calcola_dimensione(partita_iva)
             
             # Verifica se c'è un errore
@@ -580,26 +592,23 @@ def calcola_dimensione_pmi():
             }
             
             return jsonify(risposta), 200
-            
+        
         except Exception as e:
-            print(f"❌ Errore durante il calcolo: {str(e)}")
+            print(f"❌ Errore generale endpoint PMI: {str(e)}")
             import traceback
             print(traceback.format_exc())
-            
             return jsonify({
                 "risultato": "errore",
-                "errore": f"Errore durante il calcolo: {str(e)}",
+                "errore": f"Errore del server: {str(e)}",
                 "partita_iva": partita_iva
             }), 500
-    
-    except Exception as e:
-        import traceback
-        print(f"❌ Errore generale endpoint PMI: {traceback.format_exc()}")
-        return jsonify({
-            "risultato": "errore",
-            "errore": f"Errore del server: {str(e)}",
-            "partita_iva": partita_iva if 'partita_iva' in locals() else "N/D"
-        }), 500
+        
+        finally:
+            # ========== RILASCIO LOCK (SEMPRE) ==========
+            calcolo_in_corso["attivo"] = False
+            calcolo_in_corso["partita_iva"] = None
+            lock_calcolo_pmi.release()
+            print("🔓 Lock rilasciato, sistema disponibile per nuove richieste\n")
 
 
 if __name__ == '__main__':
