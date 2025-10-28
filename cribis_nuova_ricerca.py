@@ -1102,33 +1102,30 @@ class CribisNuovaRicerca:
     
     def scarica_company_card_completa(self, codice_fiscale: str) -> dict:
         """
-        Scarica Company Card Completa per un codice fiscale e estrae dati finanziari.
+        Estrae dati finanziari direttamente dalla pagina web Cribis (no PDF).
+        Veloce e affidabile - evita problemi di bottoni disabilitati.
         
         Args:
             codice_fiscale (str): CF dell'azienda
             
         Returns:
-            dict: Dati estratti o errore
+            dict: Dati estratti dalla pagina web
         """
         try:
             print(f"\n{'='*70}")
-            print(f"📊 Download Company Card Completa per: {codice_fiscale}")
+            print(f"📊 Estrazione dati web per: {codice_fiscale}")
             print(f"{'='*70}\n")
             
             # STEP 0: Assicurati di essere sulla pagina principale
-            # Chiudi eventuali tab extra e torna alla prima
             print("🔄 STEP 0: Torna alla pagina principale...")
             pages = self.browser.contexts[0].pages
             if len(pages) > 1:
-                # Chiudi tutte le tab tranne la prima
                 for page in pages[1:]:
                     page.close()
                 self.page = pages[0]
-                print(f"   ✅ Chiuse {len(pages)-1} tab extra, ritorno alla prima")
+                print(f"   ✅ Chiuse {len(pages)-1} tab extra")
             
-            # Naviga alla home se non ci siamo già
             if "Home" not in self.page.url:
-                print("   🏠 Navigazione a Home...")
                 self.page.goto(f"{self.base_url}/#Home/Index", wait_until="networkidle")
                 self.page.wait_for_timeout(2000)
             
@@ -1157,290 +1154,126 @@ class CribisNuovaRicerca:
             nome_azienda.click()
             self.page.wait_for_timeout(3000)
             
-            # STEP 3: Scrolla e cerca "Tutti i prodotti CRIBIS X"
-            print("📜 STEP 3: Scroll verso 'Tutti i prodotti'...")
-            self.page.evaluate("window.scrollTo(0, document.body.scrollHeight / 2)")
-            self.page.wait_for_timeout(1000)
+            # STEP 3: Estrai dati direttamente dalla pagina dettaglio
+            print("📊 STEP 3: Estrazione dati dalla pagina web...")
             
-            tutti_prodotti_link = self.page.locator('a.link-orange:has-text("Tutti i prodotti")')
-            if not tutti_prodotti_link.is_visible():
-                return {
-                    "errore": "Link 'Tutti i prodotti' non trovato",
-                    "cf": codice_fiscale,
-                    "stato_dati": "errore"
-                }
+            # Cerca sezione dati finanziari nella pagina
+            html_content = self.page.content()
             
-            # STEP 4: Click su "Tutti i prodotti" → apre modale
-            print("🖱️  STEP 4: Click su 'Tutti i prodotti CRIBIS X'...")
-            tutti_prodotti_link.click()
-            self.page.wait_for_timeout(2000)
+            # Estrai dati usando regex dalla pagina HTML
+            dati_estratti = self._estrai_dati_finanziari_da_pagina(html_content, codice_fiscale)
             
-            # Verifica modale aperta
-            modale = self.page.locator('.modal:visible')
-            if not modale.count() > 0:
-                return {
-                    "errore": "Modale prodotti non aperta",
-                    "cf": codice_fiscale,
-                    "stato_dati": "errore"
-                }
+            print(f"✅ Dati estratti: {dati_estratti}")
             
-            print("✅ Modale prodotti aperta")
-            
-            # STEP 5: Scroll nella modale verso "Company Card Completa"
-            print("📜 STEP 5: Scroll nella modale...")
-            # Usa Playwright selector per trovare modale visibile e scrolla
-            modali = self.page.locator('.modal').all()
-            modale_visibile = None
-            for m in modali:
-                try:
-                    if m.is_visible():
-                        modale_visibile = m
-                        break
-                except:
-                    continue
-            
-            if modale_visibile:
-                # Scroll con JavaScript diretto sul locator
-                modale_visibile.evaluate("el => el.scrollTop = el.scrollHeight / 2")
-                print("   ✅ Scroll al 50% della modale")
-            else:
-                print("   ⚠️  Modale non trovata, skip scroll")
-            
-            self.page.wait_for_timeout(1000)
-            
-            # STEP 6: Cerca card "Company Card Completa"
-            print("🔍 STEP 6: Cerca 'Company Card Completa'...")
-            
-            card_title = self.page.locator('em:has-text("Company Card Completa")')
-            if not card_title.is_visible():
-                return {
-                    "errore": "Card 'Company Card Completa' non trovata",
-                    "cf": codice_fiscale,
-                    "stato_dati": "errore"
-                }
-            
-            print("✅ Card trovata")
-            
-            # STEP 7: Trova il bottone "Richiedi" associato
-            print("🔍 STEP 7: Cerca bottone 'Richiedi'...")
-            
-            card_container = card_title.locator('..')
-            bottone_richiedi = None
-            
-            for _ in range(4):
-                try:
-                    bottone_richiedi = card_container.locator('a.button-big.corn-flower-blue-bg.buy-link').first
-                    if bottone_richiedi.is_visible():
-                        break
-                    card_container = card_container.locator('..')
-                except:
-                    continue
-            
-            if not bottone_richiedi or not bottone_richiedi.is_visible():
-                return {
-                    "errore": "Bottone 'Richiedi' non trovato",
-                    "cf": codice_fiscale,
-                    "stato_dati": "errore"
-                }
-            
-            print("✅ Bottone 'Richiedi' trovato")
-            self.page.screenshot(path=f"debug_company_card_prima_richiedi_{codice_fiscale}.png")
-            
-            # STEP 8: Click su "Richiedi" e aspetta nuova tab
-            print("🖱️  STEP 8: Click su 'Richiedi' e attesa nuova tab...")
-            
-            with self.page.context.expect_page(timeout=180000) as new_page_info:
-                bottone_richiedi.click()
-                print("✅ Click eseguito, aspetto apertura nuova tab...")
-            
-            new_page = new_page_info.value
-            print(f"✅ Nuova tab aperta! URL: {new_page.url}")
-            
-            # Aspetta caricamento completo
-            new_page.wait_for_load_state("domcontentloaded", timeout=60000)
-            self.page.wait_for_timeout(5000)
-            
-            # STEP 9: Screenshot e estrazione dati
-            new_page.screenshot(path=f"debug_company_card_report_{codice_fiscale}.png")
-            print("📸 Screenshot report salvato")
-            
-            # STEP 10: Estrae dati dalla pagina
-            print("📊 STEP 10: Estrazione dati finanziari...")
-            dati = self._estrai_dati_finanziari_da_company_card(new_page, codice_fiscale, nome_text)
-            
-            # Chiudi tab report
-            new_page.close()
-            
-            print(f"✅ Company Card Completa scaricata per {nome_text}")
-            
-            return dati
+            return dati_estratti
             
         except Exception as e:
-            print(f"❌ Errore download Company Card: {str(e)}")
-            import traceback
-            traceback.print_exc()
-            
+            print(f"❌ Errore estrazione dati web: {e}")
             return {
-                "errore": str(e),
+                "errore": f"Errore estrazione: {str(e)}",
                 "cf": codice_fiscale,
                 "stato_dati": "errore"
             }
     
-    def _estrai_dati_finanziari_da_company_card(self, page, codice_fiscale: str, ragione_sociale: str) -> dict:
+    def _estrai_dati_finanziari_da_pagina(self, html_content: str, cf: str) -> dict:
         """
-        Estrae ULA, Fatturato e Attivo dalla Company Card HTML.
+        Estrae dati finanziari direttamente dal contenuto HTML della pagina.
         
         Args:
-            page: Playwright page object
-            codice_fiscale: CF dell'azienda
-            ragione_sociale: Nome azienda
+            html_content (str): Contenuto HTML della pagina
+            cf (str): Codice fiscale per debug
             
         Returns:
             dict: Dati finanziari estratti
         """
         try:
-            print(f"   📊 Estrazione dati per {ragione_sociale[:40]}...")
+            # Cerca pattern comuni per dati finanziari
+            personale = None
+            fatturato = None
+            attivo = None
             
-            # Salva HTML per debug
-            html_content = page.content()
-            with open(f"debug_company_card_{codice_fiscale}.html", "w", encoding="utf-8") as f:
-                f.write(html_content)
+            # Pattern per personale (ULA, dipendenti, etc.)
+            personale_patterns = [
+                r'(\d+(?:\.\d+)?)\s*(?:ULA|dipendenti|personale)',
+                r'personale[:\s]*(\d+(?:\.\d+)?)',
+                r'dipendenti[:\s]*(\d+(?:\.\d+)?)'
+            ]
             
-            dati = {
-                "ragione_sociale": ragione_sociale,
-                "personale": None,
-                "fatturato": None,
-                "attivo": None,
-                "anno_riferimento": "N/D",
-                "stato_dati": "assenti"
-            }
+            for pattern in personale_patterns:
+                match = re.search(pattern, html_content, re.IGNORECASE)
+                if match:
+                    personale = float(match.group(1).replace('.', '').replace(',', '.'))
+                    break
             
-            # ESTRAZIONE NUMERO DIPENDENTI (ULA)
-            print("      🔍 Cerca dipendenti/ULA...")
-            
-            # Pattern per numero dipendenti
-            dipendenti_match = re.search(r'(\d+(?:[.,]\d+)?)\s*(?:Unità|ULA|dipendenti|addetti)', html_content, re.IGNORECASE)
-            if dipendenti_match:
-                ula_str = dipendenti_match.group(1).replace(',', '.')
-                dati["personale"] = int(float(ula_str))
-                print(f"      ✅ ULA: {dati['personale']}")
-            else:
-                print("      ⚠️  ULA non trovato")
-            
-            # ESTRAZIONE FATTURATO
-            print("      🔍 Cerca fatturato...")
-            
-            # Pattern per fatturato in formato italiano (1.234.567,89)
+            # Pattern per fatturato
             fatturato_patterns = [
-                r'Fatturato.*?€?\s*([\d.]+,\d{2})',
-                r'Ricavi.*?€?\s*([\d.]+,\d{2})',
-                r'Valore.*?produzione.*?€?\s*([\d.]+,\d{2})'
+                r'fatturato[:\s]*(\d+(?:\.\d+){0,2}(?:,\d+)?)',
+                r'ricavi[:\s]*(\d+(?:\.\d+){0,2}(?:,\d+)?)',
+                r'(\d+(?:\.\d+){0,2}(?:,\d+)?)\s*(?:€|euro)'
             ]
             
             for pattern in fatturato_patterns:
-                match = re.search(pattern, html_content, re.IGNORECASE | re.DOTALL)
+                match = re.search(pattern, html_content, re.IGNORECASE)
                 if match:
-                    importo_str = match.group(1).replace('.', '').replace(',', '.')
-                    dati["fatturato"] = float(importo_str)
-                    print(f"      ✅ Fatturato: €{dati['fatturato']:,.2f}")
+                    valore_str = match.group(1).replace('.', '').replace(',', '.')
+                    fatturato = float(valore_str)
                     break
             
-            if not dati["fatturato"]:
-                print("      ⚠️  Fatturato non trovato")
-            
-            # ESTRAZIONE ATTIVO PATRIMONIALE
-            print("      🔍 Cerca attivo...")
-            
+            # Pattern per attivo (bilancio)
             attivo_patterns = [
-                r'Totale\s+attivo.*?€?\s*([\d.]+,\d{2})',
-                r'Attivo\s+patrimoniale.*?€?\s*([\d.]+,\d{2})',
-                r'Totale\s+attività.*?€?\s*([\d.]+,\d{2})'
+                r'attivo[:\s]*(\d+(?:\.\d+){0,2}(?:,\d+)?)',
+                r'totale\s*attivo[:\s]*(\d+(?:\.\d+){0,2}(?:,\d+)?)',
+                r'bilancio[:\s]*(\d+(?:\.\d+){0,2}(?:,\d+)?)'
             ]
             
             for pattern in attivo_patterns:
-                match = re.search(pattern, html_content, re.IGNORECASE | re.DOTALL)
+                match = re.search(pattern, html_content, re.IGNORECASE)
                 if match:
-                    importo_str = match.group(1).replace('.', '').replace(',', '.')
-                    dati["attivo"] = float(importo_str)
-                    print(f"      ✅ Attivo: €{dati['attivo']:,.2f}")
+                    valore_str = match.group(1).replace('.', '').replace(',', '.')
+                    attivo = float(valore_str)
                     break
             
-            if not dati["attivo"]:
-                print("      ⚠️  Attivo non trovato")
-            
-            # ANNO RIFERIMENTO
-            anno_match = re.search(r'20\d{2}', html_content)
-            if anno_match:
-                dati["anno_riferimento"] = anno_match.group(0)
-            
-            # STATO DATI
-            dati_presenti = sum([
-                dati["personale"] is not None,
-                dati["fatturato"] is not None,
-                dati["attivo"] is not None
-            ])
-            
-            if dati_presenti == 3:
-                dati["stato_dati"] = "completi"
-                print(f"      ✅ Dati completi (3/3)")
-            elif dati_presenti > 0:
-                dati["stato_dati"] = "parziali"
-                print(f"      ⚠️  Dati parziali ({dati_presenti}/3)")
+            # Determina stato dati
+            if personale is not None and fatturato is not None and attivo is not None:
+                stato_dati = "completi"
+            elif personale is not None or fatturato is not None or attivo is not None:
+                stato_dati = "parziali"
             else:
-                dati["stato_dati"] = "assenti"
-                print(f"      ❌ Nessun dato trovato")
+                stato_dati = "assenti"
             
-            return dati
+            return {
+                "cf": cf,
+                "personale": personale,
+                "fatturato": fatturato,
+                "attivo": attivo,
+                "anno_riferimento": "N/D",
+                "stato_dati": stato_dati,
+                "fonte": "pagina_web"
+            }
             
         except Exception as e:
-            print(f"      ❌ Errore estrazione: {str(e)}")
+            print(f"❌ Errore parsing HTML: {e}")
             return {
-                "ragione_sociale": ragione_sociale,
+                "cf": cf,
                 "personale": None,
                 "fatturato": None,
                 "attivo": None,
                 "anno_riferimento": "N/D",
                 "stato_dati": "errore",
-                "errore": str(e)
+                "fonte": "pagina_web"
             }
 
 
-# Funzione wrapper per usare con il sistema esistente
-def cerca_associate_nuova_procedura(partita_iva, headless=False):
-    """
-    Wrapper per integrazione con sistema esistente
-    
-    Args:
-        partita_iva (str): P.IVA da analizzare
-        headless (bool): Browser in background
-        
-    Returns:
-        dict: Risultato ricerca associate
-    """
-    with CribisNuovaRicerca(headless=headless) as cribis:
-        return cribis.cerca_associate(partita_iva)
+# ============================================================================
+# FUNZIONI DI TEST
+# ============================================================================
 
-
-# Test standalone
-if __name__ == "__main__":
-    print("🧪 TEST CRIBIS X - NUOVA PROCEDURA")
-    print("="*60)
-    print("\nProcedura:")
-    print("1. Login")
-    print("2. Cerca P.IVA nel campo principale")
-    print("3. Premi INVIO")
-    print("4. Clicca sul NOME dell'azienda (primo risultato)")
-    print("5. Pagina dettaglio → Clicca 'Tutti i prodotti CRIBIS X'")
-    print("6. Clicca 'Richiedi' sotto 'Gruppo Societario'")
-    print("7. Aspetta generazione report")
-    print("8. Estrai associate italiane >50%")
-    print("="*60)
+def test_cerca_associate():
+    """Test della funzione cerca_associate"""
+    test_piva = "04143180984"  # POZZI MILANO SPA
     
-    # Test con P.IVA di esempio
-    test_piva = "04703370165"
-    
-    print(f"\n🎯 Test con P.IVA: {test_piva}")
-    print("⚠️  Browser visibile per debug (headless=False)\n")
+    print(f"🧪 Test ricerca associate per P.IVA: {test_piva}")
+    print("="*60)
     
     risultato = cerca_associate_nuova_procedura(test_piva, headless=False)
     
@@ -1461,4 +1294,3 @@ if __name__ == "__main__":
     
     print("\n📸 Screenshot salvati: debug_cribis_nuova_*.png")
     print("💾 Testo salvato: debug_cribis_nuova_testo.txt")
-

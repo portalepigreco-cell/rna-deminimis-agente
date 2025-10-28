@@ -419,7 +419,7 @@
                 <p>Calcola la <strong>dimensione d'impresa</strong> secondo la <strong>Raccomandazione UE 2003/361/CE</strong>.</p>
                 <p style="margin-top: 10px; color: #a0a0a0;">✅ Include gruppo societario: collegate (>50%) e partner (25-50%)</p>
                 <p style="margin-top: 5px; font-size: 0.9em;">📈 Classifica: Micro / Piccola / Media / Grande Impresa</p>
-                <p style="margin-top: 10px; color: #ffaa00;">⚠️ Questa operazione richiede 5-15 minuti (scarica Company Card per ogni società).</p>
+                <p style="margin-top: 10px; color: #ffaa00;">⚠️ Questa operazione richiede 1-3 minuti (estrazione dati web).</p>
             </div>
             
             <label for="partita-iva-pmi">Partita IVA (singola):</label>
@@ -1227,8 +1227,8 @@
             
             setTimeout(() => {
                 if (document.getElementById('loading').style.display === 'flex') {
-                    document.getElementById('loading-text').innerText = '📊 Download Company Card...';
-                    document.getElementById('loading-detail').innerText = 'Scaricamento dati finanziari per ogni società (3-5 min)...';
+                    document.getElementById('loading-text').innerText = '📊 Estrazione dati web...';
+                    document.getElementById('loading-detail').innerText = 'Analisi dati finanziari dalle pagine Cribis (veloce)...';
                 }
             }, 8000);
             
