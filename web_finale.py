@@ -18,6 +18,9 @@ from datetime import datetime
 app = Flask(__name__)
 CORS(app)
 
+# Istanza globale del calcolatore PMI (per riutilizzare la sessione browser)
+calcolatore_pmi_globale = None
+
 # Database precaricato con i risultati che abbiamo già testato
 DATABASE_PIVA = {
     "03254550738": {"totale": 9505.95, "aiuti": 2, "note": "Testato - OK"},
@@ -475,8 +478,17 @@ def calcola_dimensione_pmi():
             
             print(f"🔧 Modalità: {'PRODUZIONE (headless)' if is_production else 'SVILUPPO (browser visibile)'}")
             
-            # Inizializza calcolatore
-            calc = CalcolatoreDimensionePMI(headless=is_production)
+            # Riutilizza istanza globale se esiste, altrimenti creane una nuova
+            global calcolatore_pmi_globale
+            if calcolatore_pmi_globale is None:
+                print("🆕 Creo nuova istanza calcolatore (prima richiesta)")
+                calcolatore_pmi_globale = CalcolatoreDimensionePMI(headless=is_production)
+                # Inizializza browser e login una sola volta
+                calcolatore_pmi_globale.cribis = None  # Sarà inizializzato al primo uso
+            else:
+                print("♻️  Riutilizzo istanza calcolatore esistente (sessione già attiva)")
+            
+            calc = calcolatore_pmi_globale
             
         except Exception as e:
             print(f"⚠️ Errore inizializzazione Calcolatore PMI: {e}")

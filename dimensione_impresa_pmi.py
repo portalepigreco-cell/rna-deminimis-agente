@@ -65,6 +65,7 @@ class CalcolatoreDimensionePMI:
         """
         self.headless = headless
         self.cribis = None
+        self.browser_attivo = False
         
     def calcola_dimensione(self, partita_iva: str) -> Dict:
         """
@@ -89,10 +90,15 @@ class CalcolatoreDimensionePMI:
             print(f"📊 CALCOLO DIMENSIONE PMI - P.IVA: {partita_iva}")
             print(f"{'='*70}\n")
             
-            # Inizializza connessione Cribis (usa context manager)
-            self.cribis = CribisNuovaRicerca(headless=self.headless)
-            self.cribis.__enter__()  # Inizializza browser
-            self.cribis.login()
+            # Inizializza browser solo se non è già attivo (RIUTILIZZO SESSIONE)
+            if not self.browser_attivo:
+                print("🆕 Inizializzo browser e login (prima richiesta)")
+                self.cribis = CribisNuovaRicerca(headless=self.headless)
+                self.cribis.__enter__()  # Inizializza browser
+                self.cribis.login()
+                self.browser_attivo = True
+            else:
+                print("♻️  Browser già attivo, riutilizzo sessione esistente (nessun nuovo login)")
             
             # STEP 1: Estrai gruppo societario completo (collegate + partner)
             print("\n1️⃣ ESTRAZIONE GRUPPO SOCIETARIO")
@@ -207,8 +213,20 @@ class CalcolatoreDimensionePMI:
             return risultato
             
         finally:
-            if self.cribis:
-                self.cribis.__exit__(None, None, None)  # Chiudi browser
+            # NON chiudere il browser (riutilizzo sessione tra richieste)
+            # Il browser verrà chiuso solo chiamando esplicitamente close()
+            pass
+    
+    def close(self):
+        """
+        Chiude il browser e termina la sessione.
+        Da chiamare quando l'applicazione si chiude.
+        """
+        if self.cribis and self.browser_attivo:
+            print("🔒 Chiudo browser...")
+            self.cribis.__exit__(None, None, None)
+            self.browser_attivo = False
+            print("✅ Browser chiuso")
     
     def _estrai_gruppo_completo(self, partita_iva: str) -> Dict:
         """
