@@ -1188,14 +1188,24 @@ class CribisNuovaRicerca:
             
             # STEP 5: Scroll nella modale verso "Company Card Completa"
             print("📜 STEP 5: Scroll nella modale...")
-            self.page.evaluate("""
-                () => {
-                    const modal = document.querySelector('.modal:visible');
-                    if (modal) {
-                        modal.scrollTop = modal.scrollHeight / 2;
-                    }
-                }
-            """)
+            # Usa Playwright selector per trovare modale visibile e scrolla
+            modali = self.page.locator('.modal').all()
+            modale_visibile = None
+            for m in modali:
+                try:
+                    if m.is_visible():
+                        modale_visibile = m
+                        break
+                except:
+                    continue
+            
+            if modale_visibile:
+                # Scroll con JavaScript diretto sul locator
+                modale_visibile.evaluate("el => el.scrollTop = el.scrollHeight / 2")
+                print("   ✅ Scroll al 50% della modale")
+            else:
+                print("   ⚠️  Modale non trovata, skip scroll")
+            
             self.page.wait_for_timeout(1000)
             
             # STEP 6: Cerca card "Company Card Completa"
