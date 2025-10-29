@@ -284,18 +284,30 @@ def cribis_nuova_ricerca():
                 "partita_iva": partita_iva
             }), 400
         
-        # Chiama la funzione di ricerca (headless su produzione, visibile su sviluppo)
-        print(f"🔍 Avvio Nuova Ricerca Cribis per P.IVA: {partita_iva}")
-        # Import lazy per evitare errori di dipendenze all'avvio su Render
+        # Usa ESATTAMENTE lo stesso flusso di "Dimensione" per cercare le collegate
+        print(f"🔍 Avvio Ricerca Collegate (flusso Dimensione) per P.IVA: {partita_iva}")
         try:
             import os
-            from cribis_nuova_ricerca import CribisNuovaRicerca
-            # Headless su Render/produzione, visibile in locale
+            from dimensione_impresa_pmi import DimensionePMICalculator
+            # Headless su Render/produzione
             is_production = ('RENDER' in os.environ) or (os.environ.get('FLASK_ENV') == 'production')
-            cribis = CribisNuovaRicerca(headless=is_production)
-            risultato = cribis.cerca_associate(partita_iva)
+            calc = DimensionePMICalculator(headless=is_production)
+            gruppo = calc._estrai_gruppo_societario(partita_iva)
+            if gruppo.get('errore'):
+                return jsonify({"errore": gruppo['errore'], "partita_iva": partita_iva}), 500
+            risultato = {
+                "associate_italiane_controllate": [
+                    {
+                        "codice_fiscale": soc.get("cf"),
+                        "ragione_sociale": soc.get("nome"),
+                        "categoria": soc.get("tipo_relazione", "collegata"),
+                        "percentuale": soc.get("percentuale"),
+                        "percentuale_numerica": soc.get("percentuale")
+                    } for soc in (gruppo.get("collegate", []) + gruppo.get("partner", []))
+                ]
+            }
         except Exception as e:
-            print(f"⚠️ Errore inizializzazione Cribis Nuova Ricerca: {e}")
+            print(f"⚠️ Errore Ricerca Collegate (flusso Dimensione): {e}")
             import traceback
             print(traceback.format_exc())
             return jsonify({"errore": f"❌ Servizio Cribis temporaneamente non disponibile: {str(e)}"}), 503
