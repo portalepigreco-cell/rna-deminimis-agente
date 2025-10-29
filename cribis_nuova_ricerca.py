@@ -209,13 +209,50 @@ class CribisNuovaRicerca:
             
             # Aspetta redirect e caricamento
             self.page.wait_for_load_state("networkidle")
-            time.sleep(3)
+            time.sleep(5)  # Aumentato timeout per Render
             
             current_url = self.page.url
             print(f"📍 URL dopo login: {current_url}")
             
             # Salva screenshot dopo login
             self._screenshot("debug_cribis_nuova_02_dopo_login.png", "Dopo login")
+            
+            # VERIFICA se il login è effettivamente riuscito
+            # Controlla URL o presenza di elementi tipici della dashboard
+            login_riuscito = False
+            
+            # Verifica 1: URL deve cambiare e non essere più su LogOn
+            if "LogOn" not in current_url and ("Home" in current_url or "Dashboard" in current_url or "#" in current_url):
+                login_riuscito = True
+                print("✅ Login verificato: URL cambiato correttamente")
+            
+            # Verifica 2: Cerca elementi tipici della pagina dopo login (menu, ricerca, ecc.)
+            if not login_riuscito:
+                try:
+                    # Cerca elementi che sono presenti solo dopo login
+                    elementi_post_login = [
+                        'input[placeholder*="Cerca"]',
+                        'input[placeholder*="Ricerca"]',
+                        '.menu',
+                        '#search',
+                        '[class*="search"]'
+                    ]
+                    for sel in elementi_post_login:
+                        try:
+                            elem = self.page.wait_for_selector(sel, timeout=2000)
+                            if elem:
+                                login_riuscito = True
+                                print(f"✅ Login verificato: trovato elemento post-login ({sel})")
+                                break
+                        except:
+                            continue
+                except Exception:
+                    pass
+            
+            if not login_riuscito:
+                print("❌ Login fallito: URL o elementi non corrispondono a sessione autenticata")
+                print(f"   URL attuale: {current_url}")
+                return False
             
             print("✅ Login completato con successo!")
             return True
