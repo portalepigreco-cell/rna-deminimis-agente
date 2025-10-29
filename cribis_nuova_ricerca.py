@@ -1398,15 +1398,27 @@ class CribisNuovaRicerca:
                                             print("   ✅ Nuova tab rilevata!")
                                             nuova_tab = popup_info.value
                                             self.page = nuova_tab
-                                            print(f"   📍 URL nuova tab: {self.page.url}")
                                             self.page.wait_for_load_state("domcontentloaded")
-                                            print("   ✅ Pagina caricata, sono sulla Company Card Completa!")
-                                            bottone_trovato = True
-                                            break
+                                            url_nuova_tab = self.page.url
+                                            print(f"   📍 URL nuova tab: {url_nuova_tab}")
+                                            
+                                            # VERIFICA CRITICA: deve essere la pagina Company Card Completa
+                                            if "/Storage/Document/" in url_nuova_tab or "Company Card" in self.page.title():
+                                                print("   ✅ VERIFICATO: Sono sulla Company Card Completa!")
+                                                bottone_trovato = True
+                                                break
+                                            else:
+                                                print(f"   ❌ ERRORE CRITICO: URL non corrisponde a Company Card!")
+                                                print(f"      URL atteso: contiene '/Storage/Document/'")
+                                                print(f"      URL ottenuto: {url_nuova_tab}")
+                                                raise Exception(f"Pagina errata dopo click 'Richiedi': {url_nuova_tab}")
+                                            
                                         except Exception as e:
                                             print(f"   ❌ Errore click o attesa nuova tab: {e}")
                                             import traceback
                                             traceback.print_exc()
+                                            # NON continuare: il processo deve bloccarsi qui
+                                            raise
                                     else:
                                         print(f"   ⚠️  Nessun bottone 'Richiedi' trovato a livello {i+1}")
                                 except Exception as e:
@@ -1437,27 +1449,38 @@ class CribisNuovaRicerca:
                                                     print("   ✅ Nuova tab rilevata!")
                                                     nuova_tab = popup_info.value
                                                     self.page = nuova_tab
-                                                    print(f"   📍 URL nuova tab: {self.page.url}")
                                                     self.page.wait_for_load_state("domcontentloaded")
-                                                    print("   ✅ Pagina caricata, sono sulla Company Card Completa!")
-                                                    bottone_trovato = True
-                                                    break
+                                                    url_nuova_tab = self.page.url
+                                                    print(f"   📍 URL nuova tab: {url_nuova_tab}")
+                                                    
+                                                    # VERIFICA CRITICA
+                                                    if "/Storage/Document/" in url_nuova_tab or "Company Card" in self.page.title():
+                                                        print("   ✅ VERIFICATO: Sono sulla Company Card Completa!")
+                                                        bottone_trovato = True
+                                                        break
+                                                    else:
+                                                        print(f"   ❌ ERRORE CRITICO: URL non corrisponde a Company Card!")
+                                                        raise Exception(f"Pagina errata dopo click 'Richiedi' (ricerca diretta): {url_nuova_tab}")
                                                 except Exception as e:
-                                                    print(f"   ⚠️  Errore click (ricerca diretta): {e}")
-                                                    continue
+                                                    print(f"   ❌ Errore click (ricerca diretta): {e}")
+                                                    import traceback
+                                                    traceback.print_exc()
+                                                    raise  # Blocca esecuzione
                                         except Exception:
                                             continue
                                 except Exception as e:
                                     print(f"   ⚠️  Errore ricerca diretta: {e}")
                                 
                                 if not bottone_trovato:
-                                    print("   ❌ Bottone 'Richiedi' NON TROVATO dopo tutti i tentativi!")
+                                    print("   ❌ ERRORE CRITICO: Bottone 'Richiedi' NON TROVATO dopo tutti i tentativi!")
                                     # Screenshot finale
                                     try:
                                         self.page.screenshot(path=f"debug_richiedi_non_trovato_{codice_fiscale}.png", full_page=True)
                                         print(f"   📸 Screenshot salvato: debug_richiedi_non_trovato_{codice_fiscale}.png")
                                     except Exception:
                                         pass
+                                    # BLOCCA ESECUZIONE: non possiamo continuare senza aprire Company Card
+                                    raise Exception(f"Bottone 'Richiedi' per Company Card Completa non trovato per CF {codice_fiscale}. Impossibile continuare.")
                         else:
                             # Card non trovata: cerca Richiedi direttamente nella modale/pagina
                             print("   ⚠️  Card non trovata, provo ricerca diretta di 'Richiedi'...")
@@ -1483,28 +1506,64 @@ class CribisNuovaRicerca:
                                                 print("   ✅ Nuova tab rilevata!")
                                                 nuova_tab = popup_info.value
                                                 self.page = nuova_tab
-                                                print(f"   📍 URL nuova tab: {self.page.url}")
                                                 self.page.wait_for_load_state("domcontentloaded")
-                                                print("   ✅ Pagina caricata, sono sulla Company Card Completa!")
-                                                bottone_trovato = True
-                                                break
+                                                url_nuova_tab = self.page.url
+                                                print(f"   📍 URL nuova tab: {url_nuova_tab}")
+                                                
+                                                # VERIFICA CRITICA
+                                                if "/Storage/Document/" in url_nuova_tab or "Company Card" in self.page.title():
+                                                    print("   ✅ VERIFICATO: Sono sulla Company Card Completa!")
+                                                    bottone_trovato = True
+                                                    break
+                                                else:
+                                                    print(f"   ❌ ERRORE CRITICO: URL non corrisponde a Company Card!")
+                                                    raise Exception(f"Pagina errata dopo click 'Richiedi' (senza card): {url_nuova_tab}")
                                             except Exception as e:
-                                                print(f"   ⚠️  Errore click (senza card): {e}")
-                                                continue
+                                                print(f"   ❌ Errore click (senza card): {e}")
+                                                import traceback
+                                                traceback.print_exc()
+                                                raise  # Blocca esecuzione
                                     except Exception:
                                         continue
                                 
                                 if not bottone_trovato:
-                                    print("   ❌ Bottone 'Richiedi' non trovato nemmeno con ricerca diretta!")
+                                    print("   ❌ ERRORE CRITICO: Bottone 'Richiedi' non trovato nemmeno con ricerca diretta!")
+                                    try:
+                                        self.page.screenshot(path=f"debug_richiedi_non_trovato_senza_card_{codice_fiscale}.png", full_page=True)
+                                        print(f"   📸 Screenshot salvato: debug_richiedi_non_trovato_senza_card_{codice_fiscale}.png")
+                                    except Exception:
+                                        pass
+                                    # BLOCCA ESECUZIONE
+                                    raise Exception(f"Bottone 'Richiedi' per Company Card Completa non trovato (senza card) per CF {codice_fiscale}. Impossibile continuare.")
                             except Exception as e:
-                                print(f"   ⚠️  Errore ricerca diretta (senza card): {e}")
+                                print(f"   ❌ ERRORE ricerca diretta (senza card): {e}")
+                                raise  # Propaga l'errore per bloccare
                                         
                 except Exception as e:
-                    print(f"   ❌ ERRORE nella selezione Company Card Completa: {e}")
+                    print(f"   ❌ ERRORE CRITICO nella selezione Company Card Completa: {e}")
                     import traceback
                     traceback.print_exc()
+                    # Propaga l'errore per bloccare l'esecuzione
+                    raise
             
-            print(f"   📍 URL dopo STEP 3: {self.page.url}")
+            url_dopo_step3 = self.page.url
+            print(f"   📍 URL dopo STEP 3: {url_dopo_step3}")
+            
+            # VERIFICA FINALE CRITICA: dobbiamo essere sulla Company Card Completa
+            if "/Storage/Document/" not in url_dopo_step3:
+                print(f"   ❌ ERRORE CRITICO: Non siamo sulla Company Card Completa!")
+                print(f"      URL atteso: contenente '/Storage/Document/'")
+                print(f"      URL attuale: {url_dopo_step3}")
+                # Controlla anche il titolo della pagina
+                try:
+                    page_title = self.page.title()
+                    print(f"      Titolo pagina: {page_title}")
+                    if "Company Card" not in page_title:
+                        raise Exception(f"STEP 3 fallito: non siamo sulla Company Card Completa. URL: {url_dopo_step3}, Titolo: {page_title}")
+                except Exception as title_err:
+                    raise Exception(f"STEP 3 fallito: non siamo sulla Company Card Completa. URL: {url_dopo_step3}. Errore verifica titolo: {title_err}")
+            else:
+                print(f"   ✅ VERIFICATO: Siamo sulla Company Card Completa (URL contiene '/Storage/Document/')")
 
             # STEP 4: Estrai dati dalla pagina attuale (Company Card se aperta, altrimenti dettaglio)
             print("📊 STEP 4: Estrazione dati dalla pagina web...")
