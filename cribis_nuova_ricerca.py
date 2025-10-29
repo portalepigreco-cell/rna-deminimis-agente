@@ -1223,84 +1223,57 @@ class CribisNuovaRicerca:
                         except Exception as e:
                             print(f"   ⚠️  Errore scroll modale: {e}")
                         
-                        # METODO PRECISO: trova il container business-report-container che contiene "Company Card Completa"
-                        print("   🔎 STEP 3.2: Cerco container 'Company Card Completa' con selettore specifico...")
+                        # METODO SEMPLIFICATO: tutte le card hanno struttura identica, differenza è solo il testo in <em>
+                        print("   🔎 STEP 3.2: Cerco container con em='Company Card Completa'...")
                         card_container = None
                         bottone_richiedi = None
                         
                         try:
-                            # Metodo 1: Selettore diretto basato sulla struttura HTML reale
-                            print("   🔍 Metodo 1: Selettore diretto div.business-report-container con testo 'Company Card Completa'...")
+                            # Metodo diretto: trova il container che contiene em con "Company Card Completa"
+                            print("   🔍 Cerco: div.business-report-container.prod-box-marker:has(em:has-text('Company Card Completa'))...")
                             
-                            # Trova tutti i container business-report-container nella modale
-                            all_containers = modale.locator('div.business-report-container.prod-box-marker').all()
-                            print(f"   📦 Trovati {len(all_containers)} container business-report-container")
+                            card_container = modale.locator(
+                                'div.business-report-container.prod-box-marker:has(em:has-text("Company Card Completa"))'
+                            ).first
                             
-                            for i, container in enumerate(all_containers):
-                                try:
-                                    # Verifica che il container contenga il testo "Company Card Completa"
-                                    container_text = container.inner_text()
-                                    if 'company' in container_text.lower() and 'card' in container_text.lower() and 'completa' in container_text.lower():
-                                        # Verifica che abbia l'<em> con "Company Card Completa"
-                                        em_elements = container.locator('em:has-text("Company Card Completa")').all()
-                                        if em_elements:
-                                            print(f"   ✅ Container {i+1} contiene 'Company Card Completa'!")
-                                            card_container = container
-                                            
-                                            # Cerca il bottone "Richiedi" dentro questo container specifico
-                                            print(f"   🔍 Cerco bottone 'Richiedi' dentro il container {i+1}...")
-                                            bottone_candidati = container.locator('.business-report-button-container a:has-text("Richiedi"), .business-report-button-container button:has-text("Richiedi")').all()
-                                            
-                                            if bottone_candidati:
-                                                bottone_richiedi = bottone_candidati[0]
-                                                print(f"   ✅ Bottone 'Richiedi' trovato nel container corretto!")
-                                                break
-                                            else:
-                                                # Prova ricerca più generica dentro il container
-                                                bottone_candidati = container.locator('a:has-text("Richiedi"), button:has-text("Richiedi")').all()
-                                                if bottone_candidati:
-                                                    bottone_richiedi = bottone_candidati[0]
-                                                    print(f"   ✅ Bottone 'Richiedi' trovato (ricerca generica nel container)!")
-                                                    break
-                                                else:
-                                                    print(f"   ⚠️  Container {i+1} ha il testo corretto ma bottone 'Richiedi' non trovato dentro")
-                                except Exception as e:
-                                    print(f"   ⚠️  Errore analisi container {i+1}: {e}")
-                                    continue
-                            
-                            # Metodo 2 (fallback): Selettore combinato con has()
-                            if not card_container or not bottone_richiedi:
-                                print("   🔍 Metodo 2: Selettore combinato con :has()...")
-                                try:
-                                    # Prova selettore Playwright con :has()
-                                    card_container = modale.locator(
-                                        'div.business-report-container.prod-box-marker:has(em:has-text("Company Card Completa"))'
-                                    ).first
-                                    
-                                    if card_container.count() > 0:
-                                        print("   ✅ Container trovato con selettore :has()")
-                                        bottone_richiedi = card_container.locator('.business-report-button-container a').first
-                                        if bottone_richiedi.count() == 0:
-                                            bottone_richiedi = card_container.locator('a:has-text("Richiedi")').first
-                                except Exception as e:
-                                    print(f"   ⚠️  Metodo 2 fallito: {e}")
-                            
-                            # Metodo 3 (fallback): JavaScript filtering
-                            if not card_container or not bottone_richiedi:
-                                print("   🔍 Metodo 3: JavaScript filtering...")
+                            if card_container.count() > 0:
+                                print("   ✅ Container 'Company Card Completa' trovato!")
+                                
+                                # Cerca il bottone "Richiedi" dentro questo container specifico
+                                print("   🔍 Cerco bottone 'Richiedi' dentro il container...")
+                                bottone_richiedi = card_container.locator('.business-report-button-container a, .business-report-button-container button').first
+                                
+                                if bottone_richiedi.count() > 0:
+                                    # Verifica che il testo del bottone sia "Richiedi"
+                                    btn_text = bottone_richiedi.inner_text().strip()
+                                    if 'richiedi' in btn_text.lower():
+                                        print(f"   ✅ Bottone 'Richiedi' trovato nel container! (Testo: '{btn_text}')")
+                                    else:
+                                        print(f"   ⚠️  Bottone nel container ma testo diverso: '{btn_text}'")
+                                        bottone_richiedi = None
+                                else:
+                                    print("   ⚠️  Nessun bottone in .business-report-button-container, provo ricerca generica nel container...")
+                                    bottone_richiedi = card_container.locator('a:has-text("Richiedi"), button:has-text("Richiedi")').first
+                                    if bottone_richiedi.count() > 0:
+                                        print("   ✅ Bottone 'Richiedi' trovato (ricerca generica nel container)!")
+                                    else:
+                                        bottone_richiedi = None
+                            else:
+                                print("   ❌ Container con 'Company Card Completa' NON trovato!")
+                                # Fallback: prova con JavaScript
+                                print("   🔍 Fallback: ricerca con JavaScript...")
                                 try:
                                     container_info = modale.evaluate("""
                                         () => {
                                             const containers = document.querySelectorAll('div.business-report-container.prod-box-marker');
                                             for (let container of containers) {
-                                                const emText = container.querySelector('em.dark-slate-blue');
-                                                if (emText && emText.textContent.includes('Company Card Completa')) {
-                                                    const button = container.querySelector('.business-report-button-container a, .business-report-button-container button');
+                                                const em = container.querySelector('em.dark-slate-blue, em');
+                                                if (em && em.textContent.trim() === 'Company Card Completa') {
+                                                    const button = container.querySelector('.business-report-button-container a');
                                                     return {
                                                         found: true,
                                                         hasButton: button !== null,
-                                                        buttonText: button ? button.textContent.trim() : null,
-                                                        buttonHref: button ? button.href : null
+                                                        buttonText: button ? button.textContent.trim() : null
                                                     };
                                                 }
                                             }
@@ -1311,121 +1284,46 @@ class CribisNuovaRicerca:
                                     if container_info and container_info.get('found'):
                                         print(f"   ✅ Container trovato con JavaScript! Bottone: {container_info.get('hasButton')}")
                                         if container_info.get('hasButton'):
-                                            # Risaliamo al container e poi al bottone
-                                            card_container = modale.locator('div.business-report-container.prod-box-marker:has(em:has-text("Company Card Completa"))').first
-                                            if card_container.count() > 0:
-                                                bottone_richiedi = card_container.locator('.business-report-button-container a, .business-report-button-container button').first
+                                            # Trova il container con il testo esatto
+                                            card_container = None
+                                            all_containers = modale.locator('div.business-report-container.prod-box-marker').all()
+                                            for container in all_containers:
+                                                try:
+                                                    em_text = container.locator('em').first.inner_text().strip()
+                                                    if em_text == 'Company Card Completa':
+                                                        card_container = container
+                                                        bottone_richiedi = container.locator('.business-report-button-container a').first
+                                                        if bottone_richiedi.count() > 0:
+                                                            print("   ✅ Container e bottone trovati con JavaScript filtering!")
+                                                            break
+                                                except:
+                                                    continue
                                 except Exception as js_err:
-                                    print(f"   ⚠️  Metodo 3 fallito: {js_err}")
+                                    print(f"   ⚠️  Fallback JavaScript fallito: {js_err}")
                             
-                            if card_container and bottone_richiedi:
+                            if card_container and bottone_richiedi and bottone_richiedi.count() > 0:
                                 print("   ✅ Card container E bottone 'Richiedi' trovati con successo!")
-                                # Usa card_container come riferimento (per compatibilità con codice esistente)
-                                card_sel = card_container.locator('em:has-text("Company Card Completa")').first
-                                if card_sel.count() == 0:
-                                    card_sel = card_container.first
+                                card_sel = card_container.first  # Per compatibilità con codice esistente
                             else:
-                                print("   ⚠️  Container o bottone non trovati con metodi precisi, provo metodi legacy...")
+                                print("   ❌ Container o bottone NON trovati!")
                                 card_sel = None
+                                bottone_richiedi = None
                                 
                         except Exception as container_err:
-                            print(f"   ⚠️  Errore ricerca container: {container_err}")
+                            print(f"   ❌ Errore ricerca container: {container_err}")
+                            import traceback
+                            traceback.print_exc()
                             card_sel = None
+                            bottone_richiedi = None
                         
-                        # Fallback ai metodi legacy se i nuovi non funzionano
-                        if not card_sel or card_sel.count() == 0:
-                            print("   🔍 Fallback: metodi legacy per ricerca card...")
-                            
-                            # Prova diversi selettori per il testo (legacy)
-                            text_selectors = [
-                                "text=Company Card Completa",
-                                "text=COMPANY CARD COMPLETA",
-                                "text=Company Card",
-                            ]
-                            
-                            for text_sel in text_selectors:
-                                try:
-                                    loc = modale.locator(text_sel).first if modale and modale.count() > 0 else self.page.locator(text_sel).first
-                                    if loc.count() > 0:
-                                        is_vis = loc.is_visible()
-                                        if is_vis:
-                                            print(f"   ✅ Card trovata (legacy) con: {text_sel}")
-                                            card_sel = loc
-                                            break
-                                except Exception as e:
-                                    continue
-                            
-                            if not card_sel or (card_sel.count() == 0):
-                                print("   ❌ Card 'Company Card Completa' non trovata nella modale!")
-                                # Prova ricerca più aggressiva: cerca qualsiasi elemento che contiene le parole chiave
-                                try:
-                                    if modale and modale.count() > 0:
-                                        # Usa JavaScript per cercare elementi con testo che contiene "company" e "card"
-                                        try:
-                                            found_info = modale.evaluate("""
-                                                () => {
-                                                    const elements = document.querySelectorAll('.modal-dialog *, .modal-content *, .modal *');
-                                                    for (let el of elements) {
-                                                        const txt = (el.textContent || el.innerText || '').trim();
-                                                        if (txt.toLowerCase().includes('company') && 
-                                                            txt.toLowerCase().includes('card') &&
-                                                            txt.toLowerCase().includes('completa') &&
-                                                            el.offsetParent !== null &&
-                                                            txt.length > 5 && txt.length < 100) {  // visibile e testo ragionevole
-                                                            return {
-                                                                text: txt.substring(0, 200),
-                                                                tag: el.tagName,
-                                                                className: el.className || ''
-                                                            };
-                                                        }
-                                                    }
-                                                    return null;
-                                                }
-                                            """)
-                                            if found_info:
-                                                print(f"   ✅ Card trovata con JavaScript: {found_info['text'][:60]}...")
-                                                # Prova a selezionare usando il testo trovato (prima riga)
-                                                first_line = found_info['text'].split('\n')[0].strip()
-                                                if first_line:
-                                                    try:
-                                                        card_sel = modale.locator(f'text={first_line}').first
-                                                        if card_sel.count() == 0 or not card_sel.is_visible():
-                                                            # Prova ricerca parziale
-                                                            card_sel = modale.get_by_text(first_line[:30], exact=False).first
-                                                    except:
-                                                        pass
-                                        except Exception as js_err:
-                                            pass
-                                        
-                                        # Fallback: cerca elementi che contengono "Company" e "Card" usando get_by_text
-                                        if not card_sel or card_sel.count() == 0:
-                                            try:
-                                                company_elements = modale.get_by_text("Company", exact=False).all()
-                                                for ce in company_elements[:10]:
-                                                    try:
-                                                        txt_ce = ce.inner_text()
-                                                        if 'card' in txt_ce.lower() and 'company' in txt_ce.lower():
-                                                            if ce.is_visible():
-                                                                print(f"   ✅ Card trovata con get_by_text: {txt_ce[:60]}...")
-                                                                card_sel = ce
-                                                                break
-                                                    except:
-                                                        continue
-                                            except Exception:
-                                                pass
-                                except Exception as fuzzy_err:
-                                    print(f"   ⚠️  Errore ricerca fuzzy: {fuzzy_err}")
-                                
-                                # Screenshot debug
-                                if not card_sel:
-                                    try:
-                                        self.page.screenshot(path=f"debug_card_non_trovata_{codice_fiscale}.png", full_page=True)
-                                        print(f"   📸 Screenshot salvato: debug_card_non_trovata_{codice_fiscale}.png")
-                                    except Exception:
-                                        pass
-                        except Exception as card_err:
-                            print(f"   ⚠️  Errore ricerca card: {card_err}")
-                            card_sel = None
+                        # Screenshot debug se non trovato
+                        if not card_container or not bottone_richiedi:
+                            print("   ❌ Card 'Company Card Completa' NON trovata nella modale!")
+                            try:
+                                self.page.screenshot(path=f"debug_card_non_trovata_{codice_fiscale}.png", full_page=True)
+                                print(f"   📸 Screenshot salvato: debug_card_non_trovata_{codice_fiscale}.png")
+                            except Exception:
+                                pass
                         
                         # STEP 3.3: Usa bottone_richiedi se già trovato, altrimenti cerca risalendo dal card_sel
                         bottone_trovato = False
