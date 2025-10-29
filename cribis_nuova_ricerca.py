@@ -1102,8 +1102,9 @@ class CribisNuovaRicerca:
     
     def scarica_company_card_completa(self, codice_fiscale: str) -> dict:
         """
-        Estrae dati finanziari direttamente dalla pagina web Cribis (no PDF).
-        Veloce e affidabile - evita problemi di bottoni disabilitati.
+        Apre la Company Card Completa della società richiesta e:
+        - estrae i dati dalla pagina (HTML-first)
+        - prova a scaricare anche il PDF tramite il link "Scarica" in alto a destra
         
         Args:
             codice_fiscale (str): CF dell'azienda
@@ -1154,14 +1155,60 @@ class CribisNuovaRicerca:
             nome_azienda.click()
             self.page.wait_for_timeout(3000)
             
-            # STEP 3: Estrai dati direttamente dalla pagina dettaglio
-            print("📊 STEP 3: Estrazione dati dalla pagina web...")
+            # STEP 3: Apri Company Card Completa (Richiedi)
+            print("📄 STEP 3: Apro Company Card Completa (Richiedi)...")
+            if not self.clicca_tutti_prodotti_cribis_dettaglio():
+                print("⚠️  Impossibile aprire 'Tutti i prodotti' - provo comunque estrazione dalla pagina dettaglio")
+            else:
+                # Cerca nella modale la card "Company Card Completa" e clicca "Richiedi"
+                try:
+                    print("🔎 Cerco card 'Company Card Completa' nella modale...")
+                    modale = self.page.locator('.modal-dialog, .modal-content, .modal').first
+                    if modale:
+                        # scroll in fondo
+                        try:
+                            modale.evaluate("element => element.scrollTop = element.scrollHeight")
+                            time.sleep(1)
+                        except Exception:
+                            pass
+                        # trova bottone Richiedi all'interno della card
+                        card_sel = modale.locator("text=Company Card Completa").first
+                        if card_sel and card_sel.is_visible():
+                            parent = card_sel
+                            for _ in range(8):
+                                try:
+                                    parent = parent.locator('..')
+                                    btns = parent.locator('button:has-text("Richiedi"), a:has-text("Richiedi")').all()
+                                    if btns:
+                                        with self.page.context.expect_page(timeout=120000) as popup_info:
+                                            btns[0].click(force=True)
+                                        nuova_tab = popup_info.value
+                                        self.page = nuova_tab
+                                        self.page.wait_for_load_state("domcontentloaded")
+                                        break
+                                except Exception:
+                                    break
+                except Exception as e:
+                    print(f"⚠️  Errore nella selezione Company Card Completa: {e}")
+
+            # STEP 4: Estrai dati dalla pagina attuale (Company Card se aperta, altrimenti dettaglio)
+            print("📊 STEP 4: Estrazione dati dalla pagina web...")
             
             # Cerca sezione dati finanziari nella pagina
             html_content = self.page.content()
             
             # Estrai dati usando regex dalla pagina HTML
             dati_estratti = self._estrai_dati_finanziari_da_pagina(html_content, codice_fiscale)
+
+            # STEP 5: Prova download PDF dalla pagina corrente
+            try:
+                pdf_res = self.scarica_pdf_company_card_corrente(codice_fiscale)
+                if pdf_res.get("success"):
+                    dati_estratti["pdf_filename"] = pdf_res.get("filename")
+                else:
+                    dati_estratti["pdf_note"] = pdf_res.get("reason")
+            except Exception as e:
+                dati_estratti["pdf_note"] = f"Errore download PDF: {e}"
             
             print(f"✅ Dati estratti: {dati_estratti}")
             
