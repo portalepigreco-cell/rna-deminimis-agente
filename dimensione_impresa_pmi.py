@@ -367,43 +367,71 @@ class CalcolatoreDimensionePMI:
         """
         print("   📊 Calcolo aggregati con formula UE...")
         
-        # Valori core
-        pers_core = principale.get("personale") or 0
-        fatt_core = principale.get("fatturato") or 0
-        att_core = principale.get("attivo") or 0
+        # Valori core (manteniamo None se non disponibile, non convertiamo a 0)
+        pers_core = principale.get("personale")
+        fatt_core = principale.get("fatturato")
+        att_core = principale.get("attivo")
         
         # Contributo collegate (100%)
-        pers_collegate = sum(s.get("personale", 0) or 0 for s in collegate)
-        fatt_collegate = sum(s.get("fatturato", 0) or 0 for s in collegate)
-        att_collegate = sum(s.get("attivo", 0) or 0 for s in collegate)
+        # Sommiamo solo valori non-None, altrimenti None
+        pers_collegate_values = [s.get("personale") for s in collegate if s.get("personale") is not None]
+        pers_collegate = sum(pers_collegate_values) if pers_collegate_values else None
+        
+        fatt_collegate_values = [s.get("fatturato") for s in collegate if s.get("fatturato") is not None]
+        fatt_collegate = sum(fatt_collegate_values) if fatt_collegate_values else None
+        
+        att_collegate_values = [s.get("attivo") for s in collegate if s.get("attivo") is not None]
+        att_collegate = sum(att_collegate_values) if att_collegate_values else None
         
         # Contributo partner (pro-quota)
-        pers_partner = sum(
-            (s.get("personale", 0) or 0) * (s.get("percentuale", 0) / 100.0)
+        pers_partner_values = [
+            s.get("personale") * (s.get("percentuale", 0) / 100.0)
             for s in partner
-        )
-        fatt_partner = sum(
-            (s.get("fatturato", 0) or 0) * (s.get("percentuale", 0) / 100.0)
-            for s in partner
-        )
-        att_partner = sum(
-            (s.get("attivo", 0) or 0) * (s.get("percentuale", 0) / 100.0)
-            for s in partner
-        )
+            if s.get("personale") is not None
+        ]
+        pers_partner = sum(pers_partner_values) if pers_partner_values else None
         
-        # Totali
-        personale_totale = pers_core + pers_collegate + pers_partner
-        fatturato_totale = fatt_core + fatt_collegate + fatt_partner
-        attivo_totale = att_core + att_collegate + att_partner
+        fatt_partner_values = [
+            s.get("fatturato") * (s.get("percentuale", 0) / 100.0)
+            for s in partner
+            if s.get("fatturato") is not None
+        ]
+        fatt_partner = sum(fatt_partner_values) if fatt_partner_values else None
         
-        print(f"   ✅ Personale aggregato: {personale_totale:.1f} ULA")
-        print(f"   ✅ Fatturato aggregato: €{fatturato_totale:,.2f}")
-        print(f"   ✅ Attivo aggregato: €{attivo_totale:,.2f}")
+        att_partner_values = [
+            s.get("attivo") * (s.get("percentuale", 0) / 100.0)
+            for s in partner
+            if s.get("attivo") is not None
+        ]
+        att_partner = sum(att_partner_values) if att_partner_values else None
+        
+        # Totali: somma solo se almeno uno dei componenti non è None
+        # Se TUTTI sono None, risultato è None (non disponibile)
+        personale_totale = None
+        if pers_core is not None or pers_collegate is not None or pers_partner is not None:
+            personale_totale = (pers_core or 0) + (pers_collegate or 0) + (pers_partner or 0)
+        
+        fatturato_totale = None
+        if fatt_core is not None or fatt_collegate is not None or fatt_partner is not None:
+            fatturato_totale = (fatt_core or 0) + (fatt_collegate or 0) + (fatt_partner or 0)
+        
+        attivo_totale = None
+        if att_core is not None or att_collegate is not None or att_partner is not None:
+            attivo_totale = (att_core or 0) + (att_collegate or 0) + (att_partner or 0)
+        
+        # Log con gestione None
+        pers_str = f"{personale_totale:.1f}" if personale_totale is not None else "N/D"
+        fatt_str = f"€{fatturato_totale:,.2f}" if fatturato_totale is not None else "N/D"
+        att_str = f"€{attivo_totale:,.2f}" if attivo_totale is not None else "N/D"
+        
+        print(f"   ✅ Personale aggregato: {pers_str} ULA")
+        print(f"   ✅ Fatturato aggregato: {fatt_str}")
+        print(f"   ✅ Attivo aggregato: {att_str}")
         
         return {
-            "personale_totale": round(personale_totale, 1),
-            "fatturato_totale": round(fatturato_totale, 2),
-            "attivo_totale": round(attivo_totale, 2),
+            "personale_totale": round(personale_totale, 1) if personale_totale is not None else None,
+            "fatturato_totale": round(fatturato_totale, 2) if fatturato_totale is not None else None,
+            "attivo_totale": round(attivo_totale, 2) if attivo_totale is not None else None,
             "dettaglio_calcolo": {
                 "core": {
                     "personale": pers_core,
@@ -411,20 +439,19 @@ class CalcolatoreDimensionePMI:
                     "attivo": att_core
                 },
                 "collegate_contributo": {
-                    "personale": round(pers_collegate, 1),
-                    "fatturato": round(fatt_collegate, 2),
-                    "attivo": round(att_collegate, 2)
+                    "personale": round(pers_collegate, 1) if pers_collegate is not None else None,
+                    "fatturato": round(fatt_collegate, 2) if fatt_collegate is not None else None,
+                    "attivo": round(att_collegate, 2) if att_collegate is not None else None
                 },
                 "partner_contributo": {
-                    "personale": round(pers_partner, 1),
-                    "fatturato": round(fatt_partner, 2),
-                    "attivo": round(att_partner, 2)
+                    "personale": round(pers_partner, 1) if pers_partner is not None else None,
+                    "fatturato": round(fatt_partner, 2) if fatt_partner is not None else None,
+                    "attivo": round(att_partner, 2) if att_partner is not None else None
                 }
             }
         }
     
-    def _classifica_impresa(self, personale: float, fatturato: float, 
-                           attivo: float) -> Dict:
+    def _classifica_impresa(self, personale, fatturato, attivo) -> Dict:
         """
         Classifica l'impresa secondo soglie UE (Raccomandazione 2003/361/CE).
         
@@ -439,9 +466,9 @@ class CalcolatoreDimensionePMI:
         - Grande: se 2+ criteri superano le soglie della media
         
         Args:
-            personale (float): ULA aggregate
-            fatturato (float): Fatturato aggregato
-            attivo (float): Attivo/Bilancio aggregato
+            personale (float|None): ULA aggregate (None se non disponibile)
+            fatturato (float|None): Fatturato aggregato (None se non disponibile)
+            attivo (float|None): Attivo/Bilancio aggregato (None se non disponibile)
             
         Returns:
             dict: Classificazione con dettagli soglie
@@ -449,16 +476,31 @@ class CalcolatoreDimensionePMI:
         dimensione = "Grande Impresa"
         
         # Helper: conta quanti criteri rispettano la soglia (ritorna True se almeno 2 su 3)
+        # Se un valore è None, non può rispettare la soglia (non disponibile)
         def rispetta_soglia_2su3(pers_soglia, fatt_soglia, att_soglia):
             criteri_rispettati = 0
+            criteri_disponibili = 0
             
-            if personale < pers_soglia:
-                criteri_rispettati += 1
-            if fatturato <= fatt_soglia:
-                criteri_rispettati += 1
-            if attivo <= att_soglia:
-                criteri_rispettati += 1
+            if personale is not None:
+                criteri_disponibili += 1
+                if personale < pers_soglia:
+                    criteri_rispettati += 1
             
+            if fatturato is not None:
+                criteri_disponibili += 1
+                if fatturato <= fatt_soglia:
+                    criteri_rispettati += 1
+            
+            if attivo is not None:
+                criteri_disponibili += 1
+                if attivo <= att_soglia:
+                    criteri_rispettati += 1
+            
+            # Se abbiamo meno di 2 criteri disponibili, non possiamo classificare
+            if criteri_disponibili < 2:
+                return False
+            
+            # Almeno 2 su 3 criteri devono essere rispettati (tra quelli disponibili)
             return criteri_rispettati >= 2
         
         # Check Micro (almeno 2 su 3 criteri rispettati)
@@ -515,33 +557,38 @@ class CalcolatoreDimensionePMI:
             "note": self._genera_nota_classificazione(dimensione, personale, fatturato, attivo)
         }
     
-    def _genera_nota_classificazione(self, dimensione: str, personale: float,
-                                     fatturato: float, attivo: float) -> str:
+    def _genera_nota_classificazione(self, dimensione: str, personale, fatturato, attivo) -> str:
         """Genera nota esplicativa della classificazione con regola 2 su 3"""
         
         # Conta quanti criteri rispettano ciascuna soglia
+        # Gestisce None (valore non disponibile)
         def conta_criteri_rispettati(categoria):
             soglia = SOGLIE_UE[categoria]
             criteri = 0
-            if personale < soglia["personale"]:
+            if personale is not None and personale < soglia["personale"]:
                 criteri += 1
-            if fatturato <= soglia["fatturato"]:
+            if fatturato is not None and fatturato <= soglia["fatturato"]:
                 criteri += 1
-            if attivo <= soglia["attivo"]:
+            if attivo is not None and attivo <= soglia["attivo"]:
                 criteri += 1
             return criteri
         
+        # Formattazione valori con gestione None
+        pers_str = f"{personale:.1f}" if personale is not None else "N/D"
+        fatt_str = f"€{fatturato:,.0f}" if fatturato is not None else "N/D"
+        att_str = f"€{attivo:,.0f}" if attivo is not None else "N/D"
+        
         if "Micro" in dimensione:
             n = conta_criteri_rispettati("micro")
-            return f"Microimpresa (regola 2/3): {n}/3 criteri rispettati (ULA:{personale:.1f}, Fatt:€{fatturato:,.0f}, Bil:€{attivo:,.0f})"
+            return f"Microimpresa (regola 2/3): {n}/3 criteri rispettati (ULA:{pers_str}, Fatt:{fatt_str}, Bil:{att_str})"
         elif "Piccola" in dimensione:
             n = conta_criteri_rispettati("piccola")
-            return f"Piccola Impresa (regola 2/3): {n}/3 criteri rispettati (ULA:{personale:.1f}, Fatt:€{fatturato:,.0f}, Bil:€{attivo:,.0f})"
+            return f"Piccola Impresa (regola 2/3): {n}/3 criteri rispettati (ULA:{pers_str}, Fatt:{fatt_str}, Bil:{att_str})"
         elif "Media" in dimensione:
             n = conta_criteri_rispettati("media")
-            return f"Media Impresa (regola 2/3): {n}/3 criteri rispettati (ULA:{personale:.1f}, Fatt:€{fatturato:,.0f}, Bil:€{attivo:,.0f})"
+            return f"Media Impresa (regola 2/3): {n}/3 criteri rispettati (ULA:{pers_str}, Fatt:{fatt_str}, Bil:{att_str})"
         else:
-            return f"Grande Impresa: supera le soglie PMI in 2+ criteri (ULA:{personale:.1f}, Fatt:€{fatturato:,.0f}, Bil:€{attivo:,.0f})"
+            return f"Grande Impresa: supera le soglie PMI in 2+ criteri (ULA:{pers_str}, Fatt:{fatt_str}, Bil:{att_str})"
     
     def _stampa_riepilogo(self, risultato: Dict):
         """Stampa riepilogo finale"""
@@ -556,10 +603,13 @@ class CalcolatoreDimensionePMI:
             
         if risultato.get("aggregati_ue"):
             agg = risultato["aggregati_ue"]
+            pers_str = f"{agg['personale_totale']:.1f}" if agg['personale_totale'] is not None else "N/D"
+            fatt_str = f"€{agg['fatturato_totale']:,.2f}" if agg['fatturato_totale'] is not None else "N/D"
+            att_str = f"€{agg['attivo_totale']:,.2f}" if agg['attivo_totale'] is not None else "N/D"
             print(f"\n📊 AGGREGATI UE:")
-            print(f"   • Personale: {agg['personale_totale']:.1f} ULA")
-            print(f"   • Fatturato: €{agg['fatturato_totale']:,.2f}")
-            print(f"   • Attivo: €{agg['attivo_totale']:,.2f}")
+            print(f"   • Personale: {pers_str} ULA")
+            print(f"   • Fatturato: {fatt_str}")
+            print(f"   • Attivo: {att_str}")
         
         if risultato.get("societa_senza_dati"):
             print(f"\n⚠️  Società senza dati finanziari: {len(risultato['societa_senza_dati'])}")

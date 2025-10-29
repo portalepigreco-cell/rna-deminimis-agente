@@ -1420,19 +1420,19 @@
                     <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 15px;">
                         <div style="background: #1a1a1a; padding: 15px; border-radius: 8px; text-align: center;">
                             <div style="color: #a0a0a0; font-size: 0.9em; margin-bottom: 5px;">👥 Personale</div>
-                            <div style="color: #4a9eff; font-size: 1.5em; font-weight: 600;">${data.aggregati_ue.personale_totale}</div>
+                            <div style="color: #4a9eff; font-size: 1.5em; font-weight: 600;">${data.aggregati_ue.personale_totale !== null && data.aggregati_ue.personale_totale !== undefined ? data.aggregati_ue.personale_totale : 'N/D'}</div>
                             <div style="color: #666; font-size: 0.8em;">ULA</div>
                         </div>
                         
                         <div style="background: #1a1a1a; padding: 15px; border-radius: 8px; text-align: center;">
                             <div style="color: #a0a0a0; font-size: 0.9em; margin-bottom: 5px;">💰 Fatturato</div>
-                            <div style="color: #2ed573; font-size: 1.5em; font-weight: 600;">€${(data.aggregati_ue.fatturato_totale / 1000000).toFixed(1)}M</div>
+                            <div style="color: #2ed573; font-size: 1.5em; font-weight: 600;">${data.aggregati_ue.fatturato_totale !== null && data.aggregati_ue.fatturato_totale !== undefined ? '€' + (data.aggregati_ue.fatturato_totale / 1000000).toFixed(1) + 'M' : 'N/D'}</div>
                             <div style="color: #666; font-size: 0.8em;">Milioni</div>
                         </div>
                         
                         <div style="background: #1a1a1a; padding: 15px; border-radius: 8px; text-align: center;">
                             <div style="color: #a0a0a0; font-size: 0.9em; margin-bottom: 5px;">💼 Attivo</div>
-                            <div style="color: #ffa502; font-size: 1.5em; font-weight: 600;">€${(data.aggregati_ue.attivo_totale / 1000000).toFixed(1)}M</div>
+                            <div style="color: #ffa502; font-size: 1.5em; font-weight: 600;">${data.aggregati_ue.attivo_totale !== null && data.aggregati_ue.attivo_totale !== undefined ? '€' + (data.aggregati_ue.attivo_totale / 1000000).toFixed(1) + 'M' : 'N/D'}</div>
                             <div style="color: #666; font-size: 0.8em;">Milioni</div>
                         </div>
                     </div>
@@ -1440,9 +1440,9 @@
                     <div style="margin-top: 15px; padding: 10px; background: #1a1a1a; border-radius: 8px;">
                         <div style="font-size: 0.9em; color: #a0a0a0; margin-bottom: 5px;">Dettaglio calcolo:</div>
                         <div style="font-size: 0.85em; color: #666; line-height: 1.6;">
-                            • Core: ${data.aggregati_ue.dettaglio_calcolo.core.personale} ULA, €${(data.aggregati_ue.dettaglio_calcolo.core.fatturato).toLocaleString('it-IT')}<br>
-                            • Collegate (100%): +${data.aggregati_ue.dettaglio_calcolo.collegate_contributo.personale} ULA, +€${(data.aggregati_ue.dettaglio_calcolo.collegate_contributo.fatturato).toLocaleString('it-IT')}<br>
-                            • Partner (pro-quota): +${data.aggregati_ue.dettaglio_calcolo.partner_contributo.personale} ULA, +€${(data.aggregati_ue.dettaglio_calcolo.partner_contributo.fatturato).toLocaleString('it-IT')}
+                            • Core: ${data.aggregati_ue.dettaglio_calcolo.core.personale !== null && data.aggregati_ue.dettaglio_calcolo.core.personale !== undefined ? data.aggregati_ue.dettaglio_calcolo.core.personale : 'N/D'} ULA, €${data.aggregati_ue.dettaglio_calcolo.core.fatturato !== null && data.aggregati_ue.dettaglio_calcolo.core.fatturato !== undefined ? (data.aggregati_ue.dettaglio_calcolo.core.fatturato).toLocaleString('it-IT') : 'N/D'}<br>
+                            • Collegate (100%): +${data.aggregati_ue.dettaglio_calcolo.collegate_contributo.personale !== null && data.aggregati_ue.dettaglio_calcolo.collegate_contributo.personale !== undefined ? data.aggregati_ue.dettaglio_calcolo.collegate_contributo.personale : 'N/D'} ULA, +€${data.aggregati_ue.dettaglio_calcolo.collegate_contributo.fatturato !== null && data.aggregati_ue.dettaglio_calcolo.collegate_contributo.fatturato !== undefined ? (data.aggregati_ue.dettaglio_calcolo.collegate_contributo.fatturato).toLocaleString('it-IT') : 'N/D'}<br>
+                            • Partner (pro-quota): +${data.aggregati_ue.dettaglio_calcolo.partner_contributo.personale !== null && data.aggregati_ue.dettaglio_calcolo.partner_contributo.personale !== undefined ? data.aggregati_ue.dettaglio_calcolo.partner_contributo.personale : 'N/D'} ULA, +€${data.aggregati_ue.dettaglio_calcolo.partner_contributo.fatturato !== null && data.aggregati_ue.dettaglio_calcolo.partner_contributo.fatturato !== undefined ? (data.aggregati_ue.dettaglio_calcolo.partner_contributo.fatturato).toLocaleString('it-IT') : 'N/D'}
                         </div>
                     </div>
                 </div>
