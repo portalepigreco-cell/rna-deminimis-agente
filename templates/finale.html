@@ -1295,18 +1295,21 @@
                 const taskId = startData.task_id;
                 console.log('🆔 Task creato:', taskId);
 
-                // Polling dello stato ogni 3s
+                // Polling dello stato ogni 3s - timeout molto alto per download/upload PDF
                 await new Promise((resolve, reject) => {
                     const pollIntervalMs = 3000;
                     let attempts = 0;
-                    const maxAttempts = 200; // ~10 minuti
+                    const maxAttempts = 1000; // ~50 minuti (1000 * 3s = 3000s) per gestire download multipli
+                    let lastProgressTime = Date.now();
                     const timer = setInterval(async () => {
                         attempts++;
                         try {
                             const statusResp = await fetch(`/pmi_job/status/${taskId}`);
                             const statusData = await statusResp.json();
+                            
                             // Aggiorna messaggi di loading dal server
                             if (statusData.progress) {
+                                lastProgressTime = Date.now();
                                 document.getElementById('loading-detail').innerText = statusData.progress;
                                 if (statusData.status === 'running' && statusData.progress.includes('Estrazione gruppo')) {
                                     document.getElementById('loading-text').innerText = '🔍 Estrazione gruppo societario...';
@@ -1317,6 +1320,23 @@
                                 } else if (statusData.status === 'running') {
                                     document.getElementById('loading-text').innerText = '🚀 Calcolo in esecuzione...';
                                 }
+                            }
+                            
+                            // Mostra tempo trascorso ogni 30 secondi
+                            if (attempts % 10 === 0) {
+                                const minuti = Math.floor((attempts * pollIntervalMs) / 60000);
+                                const secondi = Math.floor(((attempts * pollIntervalMs) % 60000) / 1000);
+                                if (minuti > 0) {
+                                    document.getElementById('loading-detail').innerText = `${statusData.progress || 'Elaborazione...'} (${minuti}m ${secondi}s)`;
+                                }
+                            }
+                            
+                            // Verifica se il job è "bloccato" (nessun aggiornamento da >10 minuti)
+                            const timeSinceLastProgress = Date.now() - lastProgressTime;
+                            if (timeSinceLastProgress > 600000 && statusData.status === 'running') {
+                                clearInterval(timer);
+                                reject(new Error('Il calcolo sembra bloccato (nessun aggiornamento da 10 minuti). Riprova più tardi o contatta il supporto.'));
+                                return;
                             }
 
                             if (statusData.status === 'done') {
@@ -1339,7 +1359,7 @@
                                 resolve();
                             } else if (attempts >= maxAttempts) {
                                 clearInterval(timer);
-                                reject(new Error('Timeout operazione'));
+                                reject(new Error('Timeout operazione (50 minuti). Il calcolo potrebbe essere ancora in corso. Ricarica la pagina tra qualche minuto o contatta il supporto se il problema persiste.'));
                             }
                         } catch (e) {
                             clearInterval(timer);

@@ -1210,7 +1210,7 @@ class CribisNuovaRicerca:
                                     parent = parent.locator('..')
                                     btns = parent.locator('button:has-text("Richiedi"), a:has-text("Richiedi")').all()
                                     if btns:
-                                        with self.page.context.expect_page(timeout=120000) as popup_info:
+                                        with self.page.context.expect_page(timeout=180000) as popup_info:
                                             btns[0].click(force=True)
                                         nuova_tab = popup_info.value
                                         self.page = nuova_tab
@@ -1411,9 +1411,9 @@ class CribisNuovaRicerca:
                     "filename": None
                 }
 
-            # Attendi evento download e clicca
-            print("⬇️  Avvio download PDF Company Card (attendo evento download)...")
-            with self.page.expect_download(timeout=60000) as download_info:
+            # Attendi evento download e clicca (timeout alto per PDF grandi)
+            print("⬇️  Avvio download PDF Company Card (attendo evento download, timeout 2 minuti)...")
+            with self.page.expect_download(timeout=120000) as download_info:
                 link.click(force=True)
             download = download_info.value
 
