@@ -1193,29 +1193,175 @@ class CribisNuovaRicerca:
                 print("⚠️  Impossibile aprire 'Tutti i prodotti' - provo comunque estrazione dalla pagina dettaglio")
             else:
                 print("   ✅ Modale 'Tutti i prodotti' aperta")
+                
+                # Attendi caricamento modale
+                print("   ⏳ Attendo caricamento modale (3 sec)...")
+                time.sleep(3)
+                self.page.wait_for_load_state("domcontentloaded")
+                
+                # Screenshot di debug
+                try:
+                    self.page.screenshot(path=f"debug_modale_aperta_{codice_fiscale}.png", full_page=True)
+                    print(f"   📸 Screenshot modale salvato: debug_modale_aperta_{codice_fiscale}.png")
+                except Exception as e:
+                    print(f"   ⚠️  Errore screenshot: {e}")
+                
+                # DEBUG: Verifica HTML della pagina
+                print(f"   🔍 URL dopo apertura modale: {self.page.url}")
+                page_title = self.page.title()
+                print(f"   🔍 Titolo pagina: {page_title}")
+                
                 # Cerca nella modale la card "Company Card Completa" e clicca "Richiedi"
                 try:
                     print("   🔎 STEP 3.1: Cerco card 'Company Card Completa' nella modale...")
                     
+                    # DEBUG: Conta tutte le modali presenti
+                    print("   🔍 DEBUG: Verifico presenza modali...")
+                    for modal_sel in ['.modal-dialog', '.modal-content', '.modal', '[role="dialog"]']:
+                        count = self.page.locator(modal_sel).count()
+                        print(f"      Selettore '{modal_sel}': {count} elementi trovati")
+                    
                     # Prova diversi selettori per la modale
                     modale = None
-                    for modal_sel in ['.modal-dialog', '.modal-content', '.modal', '[role="dialog"]']:
-                        try:
-                            modale = self.page.locator(modal_sel).first
-                            if modale.count() > 0:
-                                print(f"   ✅ Modale trovata con selettore: {modal_sel}")
-                                break
-                        except Exception as e:
-                            print(f"   ⚠️  Selettore {modal_sel} non funziona: {e}")
-                            continue
+                    # CRITICO: La modale prodotti ha class="modal fade in modal-marker" con display:block
+                    # Cerchiamo PRIMA quella specifica, poi fallback a visibili
                     
-                    if not modale or modale.count() == 0:
+                    # METODO 1: Cerca modale con class specifica "modal fade in" (quella attiva)
+                    try:
+                        modale_attiva = self.page.locator('.modal.fade.in, .modal.in, .modal-marker:has(.all-prod-marker)').first
+                        try:
+                            modale_attiva_count = modale_attiva.count()
+                        except:
+                            modale_attiva_count = 0
+                        if modale_attiva_count > 0:
+                            # Verifica che contenga "Richiedi un prodotto"
+                            modal_text_test = modale_attiva.inner_text()
+                            if "Richiedi un prodotto CRIBIS X" in modal_text_test or "all-prod-marker" in str(modale_attiva):
+                                modale = modale_attiva.locator('.modal-dialog, .modal-content').first
+                                try:
+                                    modale_dialog_count = modale.count()
+                                except:
+                                    modale_dialog_count = 0
+                                if modale_dialog_count > 0:
+                                    print("   ✅ Modale PRODOTTI trovata con selettore '.modal.fade.in'!")
+                            else:
+                                print(f"   ⚠️  Modale .fade.in non è quella dei prodotti (testo: '{modal_text_test[:50]}...')")
+                    except Exception as e:
+                        print(f"   ⚠️  Errore cercando .modal.fade.in: {e}")
+                    
+                    # METODO 2: Se non trovata, cerca tra tutte le modali quella con "Richiedi un prodotto"
+                    if not modale:
+                        print("   🔍 Metodo 2: Cerco tra tutte le modali quella con 'Richiedi un prodotto'...")
+                        for modal_sel in ['.modal-dialog', '.modal-content', '.modal', '[role="dialog"]']:
+                            try:
+                                # Cerca solo modali VISIBILI (la modale prodotti è visibile, quella di conferma può essere nascosta)
+                                all_modals_visible = self.page.locator(f'{modal_sel}:visible').all()
+                                print(f"   🔍 Selettore '{modal_sel}:visible': {len(all_modals_visible)} modali VISIBILI trovate")
+                            
+                                if len(all_modals_visible) == 0:
+                                    # Fallback: prova tutte le modali (anche nascoste)
+                                    all_modals_visible = self.page.locator(modal_sel).all()
+                                    print(f"   🔍 Fallback: '{modal_sel}' (tutte): {len(all_modals_visible)} modali totali")
+                                
+                                # Cerca tra tutte le modali quella con "Richiedi un prodotto" o "Company Card"
+                                for i, modal_candidate in enumerate(all_modals_visible):
+                                    try:
+                                        # Verifica se è visibile
+                                        is_visible = modal_candidate.evaluate("el => el.offsetParent !== null && window.getComputedStyle(el).display !== 'none'")
+                                        
+                                        if not is_visible:
+                                            print(f"   ⚠️  Modale #{i+1} non è visibile, salto")
+                                            continue
+                                        
+                                        modal_text = modal_candidate.inner_text()
+                                        modal_html_preview = modal_candidate.evaluate("el => el.innerHTML.substring(0, 300)")
+                                        
+                                        # Verifica se questa è la modale dei prodotti
+                                        is_prodotti = (
+                                            "Richiedi un prodotto CRIBIS X" in modal_text or
+                                            "Company Card Completa" in modal_text or
+                                            "business-report-container" in modal_html_preview or
+                                            "prod-box-marker" in modal_html_preview
+                                        )
+                                        
+                                        if is_prodotti:
+                                            modale = modal_candidate
+                                            print(f"   ✅ Modale PRODOTTI trovata! (selettore: {modal_sel}, modale #{i+1}, VISIBILE)")
+                                            
+                                            # DEBUG: Verifica contenuto modale
+                                            card_count = modale.locator('div.business-report-container').count()
+                                            print(f"   📊 Card business-report trovate nella modale: {card_count}")
+                                            
+                                            if "Company Card Completa" in modal_text:
+                                                print("   ✅ Testo 'Company Card Completa' presente nella modale!")
+                                            else:
+                                                print("   ⚠️  'Company Card Completa' non presente, ma modale prodotti corretta")
+                                            
+                                            break
+                                        else:
+                                            print(f"   ⚠️  Modale #{i+1} non è quella dei prodotti (è: '{modal_text[:50]}...')")
+                                    except Exception as debug_err:
+                                        print(f"   ⚠️  Errore debug modale #{i+1}: {debug_err}")
+                                        continue
+                                
+                                if modale:
+                                    break
+                            except Exception as e:
+                                print(f"   ⚠️  Selettore {modal_sel} non funziona: {e}")
+                                continue
+                    
+                    # FALLBACK FINALE: Se non trova ancora, prendi la modale con più card business-report
+                    if not modale:
+                        print("   🔍 Fallback finale: cerco modale con più card business-report...")
+                        best_modal = None
+                        best_count = 0
+                        for modal_sel in ['.modal-dialog:visible', '.modal-content:visible']:
+                            try:
+                                all_modals = self.page.locator(modal_sel).all()
+                                for modal_candidate in all_modals:
+                                    card_count = modal_candidate.locator('div.business-report-container').count()
+                                    if card_count > best_count:
+                                        best_count = card_count
+                                        best_modal = modal_candidate
+                            except:
+                                continue
+                        
+                        if best_modal and best_count > 0:
+                            modale = best_modal
+                            print(f"   ✅ Modale trovata con {best_count} card business-report (FALLBACK)")
+                    
+                    if not modale:
                         print("   ❌ Nessuna modale trovata!")
+                        
+                        # DEBUG: Screenshot e HTML pagina completa
+                        try:
+                            self.page.screenshot(path=f"debug_no_modale_{codice_fiscale}.png", full_page=True)
+                            print(f"   📸 Screenshot NO modale salvato: debug_no_modale_{codice_fiscale}.png")
+                        except:
+                            pass
+                        
                         # Prova a cercare direttamente nella pagina
                         print("   🔍 Provo a cercare 'Company Card Completa' direttamente nella pagina...")
                         modale = None  # Forza ricerca nella pagina principale
                     else:
-                        # scroll in fondo
+                        # STEP 3.0: Espandi sezione "Basic Data" se collassata (Company Card Completa è lì)
+                        print("   🔍 STEP 3.0: Verifico se sezione 'Basic Data' è espansa...")
+                        try:
+                            # Cerca link "Altri Basic Data" e cliccalo per espandere
+                            link_altri_basic = modale.locator('a:has-text("Altri Basic Data"), a.report-generico-modal:has-text("Basic")').first
+                            try:
+                                link_altri_basic_count = link_altri_basic.count()
+                            except:
+                                link_altri_basic_count = 0
+                            if link_altri_basic_count > 0:
+                                print("   📂 Trovato link 'Altri Basic Data', lo clicco per espandere...")
+                                link_altri_basic.click()
+                                time.sleep(2)  # Attendi espansione
+                                print("   ✅ Sezione espansa")
+                        except Exception as e:
+                            print(f"   ⚠️  Link 'Altri Basic Data' non trovato o già espanso: {e}")
+                        
+                        # Scroll in fondo per vedere tutto
                         try:
                             print("   📜 Scrolling modale verso il basso...")
                             modale.evaluate("element => element.scrollTop = element.scrollHeight")
@@ -1227,23 +1373,61 @@ class CribisNuovaRicerca:
                         print("   🔎 STEP 3.2: Cerco container con em='Company Card Completa'...")
                         card_container = None
                         bottone_richiedi = None
+                        container_count = 0
+                        bottone_count = 0
                         
                         try:
                             # Metodo diretto: trova il container che contiene em con "Company Card Completa"
                             print("   🔍 Cerco: div.business-report-container.prod-box-marker:has(em:has-text('Company Card Completa'))...")
                             
-                            card_container = modale.locator(
-                                'div.business-report-container.prod-box-marker:has(em:has-text("Company Card Completa"))'
-                            ).first
+                            # Usa timeout esplicito per evitare blocchi
+                            try:
+                                card_container = modale.locator(
+                                    'div.business-report-container.prod-box-marker:has(em:has-text("Company Card Completa"))'
+                                ).first
+                                
+                                # Controllo container (senza timeout - count() non lo supporta)
+                                # Usa timeout sul locator stesso invece
+                                container_count = card_container.count()
+                                print(f"   🔍 Container count: {container_count}")
+                            except Exception as timeout_err:
+                                print(f"   ⚠️  Timeout o errore nella ricerca container: {timeout_err}")
+                                container_count = 0
+                                card_container = None
                             
-                            if card_container.count() > 0:
+                            if container_count > 0 and card_container:
                                 print("   ✅ Container 'Company Card Completa' trovato!")
+                                
+                                # DEBUG: Mostra HTML del container
+                                try:
+                                    container_html = card_container.evaluate("el => el.innerHTML.substring(0, 800)")
+                                    print(f"   📄 DEBUG Container HTML (prime 800 char):\n{container_html}")
+                                except Exception as e:
+                                    print(f"   ⚠️  Errore estrazione HTML container: {e}")
+                                
+                                # DEBUG: Conta bottoni nel container
+                                try:
+                                    btn_container_count = card_container.locator('.business-report-button-container').count()
+                                    print(f"   🔍 DEBUG: .business-report-button-container trovati nel container: {btn_container_count}")
+                                    
+                                    all_links = card_container.locator('a').count()
+                                    all_buttons = card_container.locator('button').count()
+                                    print(f"   🔍 DEBUG: Link <a> nel container: {all_links}, Button <button>: {all_buttons}")
+                                except Exception as e:
+                                    print(f"   ⚠️  Errore conteggio elementi: {e}")
                                 
                                 # Cerca il bottone "Richiedi" dentro questo container specifico
                                 print("   🔍 Cerco bottone 'Richiedi' dentro il container...")
-                                bottone_richiedi = card_container.locator('.business-report-button-container a, .business-report-button-container button').first
+                                try:
+                                    bottone_richiedi = card_container.locator('.business-report-button-container a, .business-report-button-container button').first
+                                    bottone_count = bottone_richiedi.count()
+                                    print(f"   🔍 Bottone count: {bottone_count}")
+                                except Exception as btn_timeout_err:
+                                    print(f"   ⚠️  Timeout o errore nella ricerca bottone: {btn_timeout_err}")
+                                    bottone_count = 0
+                                    bottone_richiedi = None
                                 
-                                if bottone_richiedi.count() > 0:
+                                if bottone_count > 0 and bottone_richiedi:
                                     # Verifica che il testo del bottone sia "Richiedi"
                                     btn_text = bottone_richiedi.inner_text().strip()
                                     if 'richiedi' in btn_text.lower():
@@ -1253,12 +1437,36 @@ class CribisNuovaRicerca:
                                         bottone_richiedi = None
                                 else:
                                     print("   ⚠️  Nessun bottone in .business-report-button-container, provo ricerca generica nel container...")
-                                    bottone_richiedi = card_container.locator('a:has-text("Richiedi"), button:has-text("Richiedi")').first
-                                    if bottone_richiedi.count() > 0:
-                                        print("   ✅ Bottone 'Richiedi' trovato (ricerca generica nel container)!")
-                                    else:
+                                    
+                                    # DEBUG: Mostra tutti i link/button trovati
+                                    try:
+                                        all_btns = card_container.locator('a, button').all()
+                                        print(f"   🔍 DEBUG: Trovati {len(all_btns)} elementi a/button nel container")
+                                        for i, btn in enumerate(all_btns[:5]):  # Prime 5
+                                            try:
+                                                btn_text_debug = btn.inner_text().strip()
+                                                btn_href = btn.get_attribute('href') or ''
+                                                print(f"      [{i+1}] Testo: '{btn_text_debug}' | Href: {btn_href[:50]}")
+                                            except:
+                                                pass
+                                    except Exception as e:
+                                        print(f"   ⚠️  Errore debug bottoni: {e}")
+                                    
+                                    try:
+                                        bottone_richiedi = card_container.locator('a:has-text("Richiedi"), button:has-text("Richiedi")').first
+                                        generic_btn_count = bottone_richiedi.count()
+                                        if generic_btn_count > 0:
+                                            print("   ✅ Bottone 'Richiedi' trovato (ricerca generica nel container)!")
+                                            bottone_count = generic_btn_count  # Aggiorna bottone_count
+                                        else:
+                                            print("   ❌ Bottone 'Richiedi' NON TROVATO neanche con ricerca generica!")
+                                            bottone_richiedi = None
+                                            bottone_count = 0
+                                    except Exception as generic_err:
+                                        print(f"   ⚠️  Errore ricerca generica bottone: {generic_err}")
                                         bottone_richiedi = None
-                            else:
+                                        bottone_count = 0
+                            if card_container is None:
                                 print("   ❌ Container con 'Company Card Completa' NON trovato!")
                                 # Fallback: prova con JavaScript
                                 print("   🔍 Fallback: ricerca con JavaScript...")
@@ -1293,18 +1501,36 @@ class CribisNuovaRicerca:
                                                     if em_text == 'Company Card Completa':
                                                         card_container = container
                                                         bottone_richiedi = container.locator('.business-report-button-container a').first
-                                                        if bottone_richiedi.count() > 0:
-                                                            print("   ✅ Container e bottone trovati con JavaScript filtering!")
-                                                            break
+                                                        try:
+                                                            js_btn_count = bottone_richiedi.count()
+                                                            if js_btn_count > 0:
+                                                                print("   ✅ Container e bottone trovati con JavaScript filtering!")
+                                                                bottone_count = js_btn_count  # Aggiorna bottone_count
+                                                                container_count = 1  # Container trovato
+                                                                break
+                                                        except Exception:
+                                                            bottone_richiedi = None
+                                                            bottone_count = 0
                                                 except:
                                                     continue
                                 except Exception as js_err:
                                     print(f"   ⚠️  Fallback JavaScript fallito: {js_err}")
                             
-                            if card_container and bottone_richiedi and bottone_richiedi.count() > 0:
+                            if card_container and bottone_richiedi and (bottone_count or 0) > 0:
                                 print("   ✅ Card container E bottone 'Richiedi' trovati con successo!")
                                 card_sel = card_container.first  # Per compatibilità con codice esistente
                             else:
+                                # Se il container è stato trovato ma il bottone dentro NO, è un errore critico
+                                if card_container and container_count > 0 and (not bottone_richiedi or (bottone_count or 0) == 0):
+                                    print("   ❌ ERRORE CRITICO: Container 'Company Card Completa' TROVATO ma bottone 'Richiedi' MANCANTE!")
+                                    print("      Questo indica un cambiamento nella struttura HTML della card.")
+                                    try:
+                                        self.page.screenshot(path=f"debug_bottone_mancante_nel_container_{codice_fiscale}.png", full_page=True)
+                                        print(f"   📸 Screenshot salvato: debug_bottone_mancante_nel_container_{codice_fiscale}.png")
+                                    except Exception:
+                                        pass
+                                    raise Exception(f"Container 'Company Card Completa' trovato ma bottone 'Richiedi' mancante per CF {codice_fiscale}. Impossibile continuare.")
+                                
                                 print("   ❌ Container o bottone NON trovati!")
                                 card_sel = None
                                 bottone_richiedi = None
@@ -1328,148 +1554,238 @@ class CribisNuovaRicerca:
                         # STEP 3.3: Usa bottone_richiedi se già trovato, altrimenti cerca risalendo dal card_sel
                         bottone_trovato = False
                         
-                        if bottone_richiedi and bottone_richiedi.count() > 0:
+                        # Usa bottone_count se disponibile
+                        bottone_check = (bottone_count or 0) > 0
+                        if not bottone_check and bottone_richiedi:
+                            try:
+                                bottone_check = bottone_richiedi.count() > 0
+                            except:
+                                bottone_check = False
+                        
+                        if bottone_richiedi and bottone_check:
                             print("   🔎 STEP 3.3: Bottone 'Richiedi' già trovato con selettori precisi!")
                             btns = [bottone_richiedi]
                             
                             # Salta il loop di ricerca, vai direttamente al click
                             try:
-                                print("   🖱️  STEP 3.4: Click su 'Richiedi' (già trovato, attendo nuova tab, timeout 3min)...")
-                                with self.page.context.expect_page(timeout=180000) as popup_info:
-                                    btns[0].click(force=True)
-                                print("   ✅ Nuova tab rilevata!")
-                                nuova_tab = popup_info.value
-                                self.page = nuova_tab
-                                self.page.wait_for_load_state("domcontentloaded")
-                                url_nuova_tab = self.page.url
-                                print(f"   📍 URL nuova tab: {url_nuova_tab}")
+                                print("   🖱️  STEP 3.4: Click su 'Richiedi' (già trovato, attendo nuova tab o cambio URL)...")
+                                url_prima_click = self.page.url
+                                
+                                try:
+                                    # Prova prima con expect_page (nuova tab)
+                                    with self.page.context.expect_page(timeout=30000) as popup_info:  # 30s per nuova tab
+                                        btns[0].click(force=True)
+                                    print("   ✅ Nuova tab rilevata!")
+                                    nuova_tab = popup_info.value
+                                    self.page = nuova_tab
+                                    self.page.wait_for_load_state("domcontentloaded")
+                                    url_dopo_click = self.page.url
+                                except Exception as timeout_err:
+                                    # Se non si apre nuova tab, verifica se l'URL nella stessa tab è cambiato
+                                    print(f"   ⚠️  Nessuna nuova tab rilevata entro 30s, verifico se URL cambiato nella stessa tab...")
+                                    self.page.wait_for_load_state("domcontentloaded")
+                                    time.sleep(2)  # Attendi eventuale redirect
+                                    url_dopo_click = self.page.url
+                                
+                                print(f"   📍 URL dopo click: {url_dopo_click}")
                                 
                                 # VERIFICA CRITICA: deve essere la pagina Company Card Completa
-                                if "/Storage/Document/" in url_nuova_tab or "Company Card" in self.page.title():
+                                # Escludi esplicitamente DocumentUnavailable
+                                if ("/Storage/Document/" in url_dopo_click and "DocumentUnavailable" not in url_dopo_click) or "Company Card" in self.page.title():
                                     print("   ✅ VERIFICATO: Sono sulla Company Card Completa!")
                                     bottone_trovato = True
+                                elif "DocumentUnavailable" in url_dopo_click:
+                                    print(f"   ❌ ERRORE CRITICO: Documento non disponibile!")
+                                    print(f"      URL ottenuto: {url_dopo_click}")
+                                    raise Exception(f"Documento 'Company Card Completa' non disponibile per questo CF. URL: {url_dopo_click}")
                                 else:
                                     print(f"   ❌ ERRORE CRITICO: URL non corrisponde a Company Card!")
-                                    print(f"      URL atteso: contiene '/Storage/Document/'")
-                                    print(f"      URL ottenuto: {url_nuova_tab}")
-                                    raise Exception(f"Pagina errata dopo click 'Richiedi': {url_nuova_tab}")
+                                    print(f"      URL atteso: contiene '/Storage/Document/' (escludendo DocumentUnavailable)")
+                                    print(f"      URL ottenuto: {url_dopo_click}")
+                                    raise Exception(f"Pagina errata dopo click 'Richiedi': {url_dopo_click}")
                             except Exception as e:
                                 print(f"   ❌ Errore click o attesa nuova tab: {e}")
                                 import traceback
                                 traceback.print_exc()
                                 raise
                         
-                        elif card_sel and card_sel.count() > 0:
-                            print("   🔎 STEP 3.3: Cerco bottone 'Richiedi' risalendo dalla card (metodo legacy)...")
-                            parent = card_sel
-                            bottone_trovato = False
+                        elif card_sel:
+                            try:
+                                card_sel_count = card_sel.count()
+                            except:
+                                card_sel_count = 0
                             
-                            for i in range(8):
-                                try:
-                                    print(f"   🔄 Tentativo {i+1}/8: risalgo al parent...")
-                                    parent = parent.locator('..')
-                                    
-                                    # Prova diversi selettori per il bottone
-                                    selettori_btn = [
-                                        'button:has-text("Richiedi")',
-                                        'a:has-text("Richiedi")',
-                                        'button.btn:has-text("Richiedi")',
-                                        'a.btn:has-text("Richiedi")',
-                                        '*[role="button"]:has-text("Richiedi")',
-                                        '*:has-text("Richiedi")'
-                                    ]
-                                    
-                                    btns = []
-                                    for btn_sel in selettori_btn:
-                                        try:
-                                            btns_found = parent.locator(btn_sel).all()
-                                            if btns_found:
-                                                btns.extend(btns_found)
-                                                print(f"   ✅ Trovati {len(btns_found)} bottoni con selettore: {btn_sel}")
-                                        except Exception:
-                                            continue
-                                    
-                                    if btns:
-                                        print(f"   ✅ Totale {len(btns)} bottoni 'Richiedi' trovati!")
-                                        try:
-                                            print("   🖱️  STEP 3.4: Click su 'Richiedi' (attendo nuova tab, timeout 3min)...")
-                                            with self.page.context.expect_page(timeout=180000) as popup_info:
-                                                btns[0].click(force=True)
-                                            print("   ✅ Nuova tab rilevata!")
-                                            nuova_tab = popup_info.value
-                                            self.page = nuova_tab
-                                            self.page.wait_for_load_state("domcontentloaded")
-                                            url_nuova_tab = self.page.url
-                                            print(f"   📍 URL nuova tab: {url_nuova_tab}")
-                                            
-                                            # VERIFICA CRITICA: deve essere la pagina Company Card Completa
-                                            if "/Storage/Document/" in url_nuova_tab or "Company Card" in self.page.title():
-                                                print("   ✅ VERIFICATO: Sono sulla Company Card Completa!")
-                                                bottone_trovato = True
-                                                break
-                                            else:
-                                                print(f"   ❌ ERRORE CRITICO: URL non corrisponde a Company Card!")
-                                                print(f"      URL atteso: contiene '/Storage/Document/'")
-                                                print(f"      URL ottenuto: {url_nuova_tab}")
-                                                raise Exception(f"Pagina errata dopo click 'Richiedi': {url_nuova_tab}")
-                                            
-                                        except Exception as e:
-                                            print(f"   ❌ Errore click o attesa nuova tab: {e}")
-                                            import traceback
-                                            traceback.print_exc()
-                                            # NON continuare: il processo deve bloccarsi qui
-                                            raise
-                                    else:
-                                        print(f"   ⚠️  Nessun bottone 'Richiedi' trovato a livello {i+1}")
-                                except Exception as e:
-                                    print(f"   ⚠️  Errore livello {i+1}: {e}")
-                                    break
-                            
-                            if not bottone_trovato:
-                                print("   ⚠️  Bottone 'Richiedi' non trovato risalendo dalla card, provo ricerca diretta...")
-                                # Fallback: cerca "Richiedi" direttamente nella modale o pagina
-                                try:
-                                    search_area = modale if modale and modale.count() > 0 else self.page
-                                    selettori_diretti = [
-                                        'button:has-text("Richiedi")',
-                                        'a:has-text("Richiedi")',
-                                        'button:has-text("RICHIEDI")',
-                                        'a:has-text("RICHIEDI")',
-                                        '*[role="button"]:has-text("Richiedi")'
-                                    ]
-                                    for btn_sel_diretto in selettori_diretti:
-                                        try:
-                                            btns_diretti = search_area.locator(btn_sel_diretto).all()
-                                            if btns_diretti:
-                                                print(f"   ✅ Trovato bottone 'Richiedi' con ricerca diretta: {btn_sel_diretto}")
+                            if card_sel_count > 0:
+                                print("   🔎 STEP 3.3: Cerco bottone 'Richiedi' risalendo dalla card (metodo legacy)...")
+                                parent = card_sel
+                                bottone_trovato = False
+                                
+                                for i in range(8):
+                                    try:
+                                        print(f"   🔄 Tentativo {i+1}/8: risalgo al parent...")
+                                        parent = parent.locator('..')
+                                        
+                                        # Prova diversi selettori per il bottone
+                                        selettori_btn = [
+                                            'button:has-text("Richiedi")',
+                                            'a:has-text("Richiedi")',
+                                            'button.btn:has-text("Richiedi")',
+                                            'a.btn:has-text("Richiedi")',
+                                            '*[role="button"]:has-text("Richiedi")',
+                                            '*:has-text("Richiedi")'
+                                        ]
+                                        
+                                        btns = []
+                                        for btn_sel in selettori_btn:
+                                            try:
+                                                btns_found = parent.locator(btn_sel).all()
+                                                if btns_found:
+                                                    btns.extend(btns_found)
+                                                    print(f"   ✅ Trovati {len(btns_found)} bottoni con selettore: {btn_sel}")
+                                            except Exception:
+                                                continue
+                                        
+                                        if btns:
+                                            print(f"   ✅ Totale {len(btns)} bottoni 'Richiedi' trovati!")
+                                            try:
+                                                print("   🖱️  STEP 3.4: Click su 'Richiedi' (attendo nuova tab o cambio URL)...")
+                                                url_prima_click = self.page.url
+                                                
                                                 try:
-                                                    print("   🖱️  Click su 'Richiedi' (ricerca diretta, attendo nuova tab)...")
-                                                    with self.page.context.expect_page(timeout=180000) as popup_info:
-                                                        btns_diretti[0].click(force=True)
+                                                    # Prova prima con expect_page (nuova tab)
+                                                    with self.page.context.expect_page(timeout=30000) as popup_info:  # 30s per nuova tab
+                                                        btns[0].click(force=True)
                                                     print("   ✅ Nuova tab rilevata!")
                                                     nuova_tab = popup_info.value
                                                     self.page = nuova_tab
                                                     self.page.wait_for_load_state("domcontentloaded")
-                                                    url_nuova_tab = self.page.url
-                                                    print(f"   📍 URL nuova tab: {url_nuova_tab}")
+                                                    url_dopo_click = self.page.url
+                                                except Exception as timeout_err:
+                                                    # Se non si apre nuova tab, verifica se l'URL nella stessa tab è cambiato
+                                                    print(f"   ⚠️  Nessuna nuova tab rilevata entro 30s, verifico se URL cambiato nella stessa tab...")
+                                                    self.page.wait_for_load_state("domcontentloaded")
+                                                    time.sleep(2)  # Attendi eventuale redirect
+                                                    url_dopo_click = self.page.url
+                                                
+                                                print(f"   📍 URL dopo click: {url_dopo_click}")
+                                                
+                                                # VERIFICA CRITICA: deve essere la pagina Company Card Completa
+                                                # Escludi esplicitamente DocumentUnavailable
+                                                if ("/Storage/Document/" in url_dopo_click and "DocumentUnavailable" not in url_dopo_click) or "Company Card" in self.page.title():
+                                                    print("   ✅ VERIFICATO: Sono sulla Company Card Completa!")
+                                                    bottone_trovato = True
+                                                    break
+                                                elif "DocumentUnavailable" in url_dopo_click:
+                                                    print(f"   ❌ ERRORE CRITICO: Documento non disponibile!")
+                                                    print(f"      URL ottenuto: {url_dopo_click}")
+                                                    raise Exception(f"Documento 'Company Card Completa' non disponibile per questo CF. URL: {url_dopo_click}")
+                                                else:
+                                                    print(f"   ❌ ERRORE CRITICO: URL non corrisponde a Company Card!")
+                                                    print(f"      URL atteso: contiene '/Storage/Document/' (escludendo DocumentUnavailable)")
+                                                    print(f"      URL ottenuto: {url_dopo_click}")
+                                                    raise Exception(f"Pagina errata dopo click 'Richiedi': {url_dopo_click}")
+                                                
+                                            except Exception as e:
+                                                print(f"   ❌ Errore click o attesa nuova tab: {e}")
+                                                import traceback
+                                                traceback.print_exc()
+                                                # NON continuare: il processo deve bloccarsi qui
+                                                raise
+                                        else:
+                                            print(f"   ⚠️  Nessun bottone 'Richiedi' trovato a livello {i+1}")
+                                    except Exception as e:
+                                        print(f"   ⚠️  Errore livello {i+1}: {e}")
+                                        break
+                            
+                                if not bottone_trovato:
+                                    print("   ⚠️  Bottone 'Richiedi' non trovato risalendo dalla card, provo ricerca diretta...")
+                                    # Fallback: cerca "Richiedi" direttamente nella modale o pagina
+                                    try:
+                                        try:
+                                            modale_count = modale.count() if modale else 0
+                                        except:
+                                            modale_count = 0
+                                        search_area = modale if modale and modale_count > 0 else self.page
+                                        
+                                        selettori_diretti = [
+                                            'button:has-text("Richiedi")',
+                                            'a:has-text("Richiedi")',
+                                            'button:has-text("RICHIEDI")',
+                                            'a:has-text("RICHIEDI")',
+                                            '*[role="button"]:has-text("Richiedi")'
+                                        ]
+                                        for btn_sel_diretto in selettori_diretti:
+                                            try:
+                                                btns_diretti = search_area.locator(btn_sel_diretto).all()
+                                                if btns_diretti:
+                                                    # CRITICO: Verifica che il bottone sia DENTRO un container con "Company Card Completa"
+                                                    print(f"   🔍 Trovati {len(btns_diretti)} bottoni 'Richiedi', verifico quale è per Company Card Completa...")
+                                                    bottone_corretto = None
                                                     
-                                                    # VERIFICA CRITICA
-                                                    if "/Storage/Document/" in url_nuova_tab or "Company Card" in self.page.title():
-                                                        print("   ✅ VERIFICATO: Sono sulla Company Card Completa!")
-                                                        bottone_trovato = True
-                                                        break
-                                                    else:
-                                                        print(f"   ❌ ERRORE CRITICO: URL non corrisponde a Company Card!")
-                                                        raise Exception(f"Pagina errata dopo click 'Richiedi' (ricerca diretta): {url_nuova_tab}")
-                                                except Exception as e:
-                                                    print(f"   ❌ Errore click (ricerca diretta): {e}")
-                                                    import traceback
-                                                    traceback.print_exc()
-                                                    raise  # Blocca esecuzione
-                                        except Exception:
-                                            continue
-                                except Exception as e:
-                                    print(f"   ⚠️  Errore ricerca diretta: {e}")
+                                                    for btn in btns_diretti:
+                                                        try:
+                                                            # Risali fino al container business-report
+                                                            parent_container = btn.locator('xpath=ancestor::div[contains(@class, "business-report-container")]').first
+                                                            if parent_container.count() > 0:
+                                                                # Verifica che il container abbia "Company Card Completa" nel tag <em>
+                                                                em_tag = parent_container.locator('em').first
+                                                                if em_tag.count() > 0:
+                                                                    em_text = em_tag.inner_text().strip()
+                                                                    if em_text == 'Company Card Completa':
+                                                                        bottone_corretto = btn
+                                                                        print(f"   ✅ Bottone CORRETTO trovato (dentro container 'Company Card Completa')!")
+                                                                        break
+                                                        except Exception:
+                                                            continue
+                                                    
+                                                    if not bottone_corretto:
+                                                        print(f"   ⚠️  Nessun bottone 'Richiedi' corretto trovato con selettore {btn_sel_diretto}, provo successivo...")
+                                                        continue
+                                                    
+                                                    try:
+                                                        print("   🖱️  Click su 'Richiedi' (ricerca diretta, attendo nuova tab o cambio URL)...")
+                                                        url_prima_click = self.page.url
+                                                        
+                                                        try:
+                                                            # Prova prima con expect_page (nuova tab)
+                                                            with self.page.context.expect_page(timeout=30000) as popup_info:  # 30s per nuova tab
+                                                                bottone_corretto.click(force=True)
+                                                            print("   ✅ Nuova tab rilevata!")
+                                                            nuova_tab = popup_info.value
+                                                            self.page = nuova_tab
+                                                            self.page.wait_for_load_state("domcontentloaded")
+                                                            url_dopo_click = self.page.url
+                                                        except Exception as timeout_err:
+                                                            # Se non si apre nuova tab, verifica se l'URL nella stessa tab è cambiato
+                                                            print(f"   ⚠️  Nessuna nuova tab rilevata entro 30s, verifico se URL cambiato nella stessa tab...")
+                                                            self.page.wait_for_load_state("domcontentloaded")
+                                                            time.sleep(2)  # Attendi eventuale redirect
+                                                            url_dopo_click = self.page.url
+                                                        
+                                                        print(f"   📍 URL dopo click: {url_dopo_click}")
+                                                        
+                                                        # VERIFICA CRITICA: deve essere la pagina Company Card Completa
+                                                        # Escludi esplicitamente DocumentUnavailable
+                                                        if ("/Storage/Document/" in url_dopo_click and "DocumentUnavailable" not in url_dopo_click) or "Company Card" in self.page.title():
+                                                            print("   ✅ VERIFICATO: Sono sulla Company Card Completa!")
+                                                            bottone_trovato = True
+                                                            break
+                                                        elif "DocumentUnavailable" in url_dopo_click:
+                                                            print(f"   ❌ ERRORE CRITICO: Documento non disponibile!")
+                                                            print(f"      URL ottenuto: {url_dopo_click}")
+                                                            raise Exception(f"Documento 'Company Card Completa' non disponibile per questo CF. URL: {url_dopo_click}")
+                                                        else:
+                                                            print(f"   ❌ ERRORE CRITICO: URL non corrisponde a Company Card!")
+                                                            raise Exception(f"Pagina errata dopo click 'Richiedi' (ricerca diretta): {url_dopo_click}")
+                                                    except Exception as e:
+                                                        print(f"   ❌ Errore click (ricerca diretta): {e}")
+                                                        import traceback
+                                                        traceback.print_exc()
+                                                        raise  # Blocca esecuzione
+                                            except Exception:
+                                                continue
+                                    except Exception as e:
+                                        print(f"   ⚠️  Errore ricerca diretta: {e}")
                                 
                                 if not bottone_trovato:
                                     print("   ❌ ERRORE CRITICO: Bottone 'Richiedi' NON TROVATO dopo tutti i tentativi!")
@@ -1486,7 +1802,11 @@ class CribisNuovaRicerca:
                             print("   ⚠️  Card non trovata, provo ricerca diretta di 'Richiedi'...")
                             bottone_trovato = False
                             try:
-                                search_area = modale if modale and modale.count() > 0 else self.page
+                                try:
+                                    modale_count_final = modale.count() if modale else 0
+                                except:
+                                    modale_count_final = 0
+                                search_area = modale if modale and modale_count_final > 0 else self.page
                                 selettori_diretti = [
                                     'button:has-text("Richiedi")',
                                     'a:has-text("Richiedi")',
@@ -1498,26 +1818,68 @@ class CribisNuovaRicerca:
                                     try:
                                         btns_diretti = search_area.locator(btn_sel_diretto).all()
                                         if btns_diretti:
-                                            print(f"   ✅ Trovato bottone 'Richiedi' (senza card): {btn_sel_diretto}")
+                                            # CRITICO: Verifica che ogni bottone sia DENTRO un container con "Company Card Completa"
+                                            print(f"   🔍 Trovati {len(btns_diretti)} bottoni 'Richiedi', verifico quale è per Company Card Completa...")
+                                            bottone_corretto = None
+                                            
+                                            for btn in btns_diretti:
+                                                try:
+                                                    # Trova il container parent che contiene "Company Card Completa"
+                                                    # Risali fino al container business-report
+                                                    parent_container = btn.locator('xpath=ancestor::div[contains(@class, "business-report-container")]').first
+                                                    if parent_container.count() > 0:
+                                                        # Verifica che il container abbia "Company Card Completa" nel tag <em>
+                                                        em_tag = parent_container.locator('em').first
+                                                        if em_tag.count() > 0:
+                                                            em_text = em_tag.inner_text().strip()
+                                                            if em_text == 'Company Card Completa':
+                                                                bottone_corretto = btn
+                                                                print(f"   ✅ Bottone CORRETTO trovato (dentro container 'Company Card Completa')!")
+                                                                break
+                                                except Exception:
+                                                    continue
+                                            
+                                            if not bottone_corretto:
+                                                print(f"   ❌ Nessun bottone 'Richiedi' trovato dentro container 'Company Card Completa'!")
+                                                continue
+                                            
                                             try:
-                                                print("   🖱️  Click su 'Richiedi' (senza card, attendo nuova tab)...")
-                                                with self.page.context.expect_page(timeout=180000) as popup_info:
-                                                    btns_diretti[0].click(force=True)
-                                                print("   ✅ Nuova tab rilevata!")
-                                                nuova_tab = popup_info.value
-                                                self.page = nuova_tab
-                                                self.page.wait_for_load_state("domcontentloaded")
-                                                url_nuova_tab = self.page.url
-                                                print(f"   📍 URL nuova tab: {url_nuova_tab}")
+                                                print("   🖱️  Click su 'Richiedi' (senza card, attendo nuova tab o cambio URL nella stessa tab)...")
+                                                url_prima_click = self.page.url
                                                 
-                                                # VERIFICA CRITICA
-                                                if "/Storage/Document/" in url_nuova_tab or "Company Card" in self.page.title():
+                                                try:
+                                                    # Prova prima con expect_page (nuova tab)
+                                                    with self.page.context.expect_page(timeout=30000) as popup_info:  # 30s per nuova tab
+                                                        bottone_corretto.click(force=True)
+                                                    print("   ✅ Nuova tab rilevata!")
+                                                    nuova_tab = popup_info.value
+                                                    self.page = nuova_tab
+                                                    self.page.wait_for_load_state("domcontentloaded")
+                                                    url_dopo_click = self.page.url
+                                                except Exception as timeout_err:
+                                                    # Se non si apre nuova tab, verifica se l'URL nella stessa tab è cambiato
+                                                    print(f"   ⚠️  Nessuna nuova tab rilevata entro 30s, verifico se URL cambiato nella stessa tab...")
+                                                    self.page.wait_for_load_state("domcontentloaded")
+                                                    time.sleep(2)  # Attendi eventuale redirect
+                                                    url_dopo_click = self.page.url
+                                                
+                                                print(f"   📍 URL dopo click: {url_dopo_click}")
+                                                
+                                                # VERIFICA CRITICA: deve essere la pagina Company Card Completa
+                                                # Escludi esplicitamente DocumentUnavailable
+                                                if ("/Storage/Document/" in url_dopo_click and "DocumentUnavailable" not in url_dopo_click) or "Company Card" in self.page.title():
                                                     print("   ✅ VERIFICATO: Sono sulla Company Card Completa!")
                                                     bottone_trovato = True
                                                     break
+                                                elif "DocumentUnavailable" in url_dopo_click:
+                                                    print(f"   ❌ ERRORE CRITICO: Documento non disponibile!")
+                                                    print(f"      URL ottenuto: {url_dopo_click}")
+                                                    raise Exception(f"Documento 'Company Card Completa' non disponibile per questo CF. URL: {url_dopo_click}")
                                                 else:
                                                     print(f"   ❌ ERRORE CRITICO: URL non corrisponde a Company Card!")
-                                                    raise Exception(f"Pagina errata dopo click 'Richiedi' (senza card): {url_nuova_tab}")
+                                                    print(f"      URL atteso: contiene '/Storage/Document/' (escludendo DocumentUnavailable)")
+                                                    print(f"      URL ottenuto: {url_dopo_click}")
+                                                    raise Exception(f"Pagina errata dopo click 'Richiedi' (senza card): {url_dopo_click}")
                                             except Exception as e:
                                                 print(f"   ❌ Errore click (senza card): {e}")
                                                 import traceback
@@ -1550,7 +1912,12 @@ class CribisNuovaRicerca:
             print(f"   📍 URL dopo STEP 3: {url_dopo_step3}")
             
             # VERIFICA FINALE CRITICA: dobbiamo essere sulla Company Card Completa
-            if "/Storage/Document/" not in url_dopo_step3:
+            # Escludi esplicitamente DocumentUnavailable
+            if "DocumentUnavailable" in url_dopo_step3:
+                print(f"   ❌ ERRORE CRITICO: Documento non disponibile!")
+                print(f"      URL ottenuto: {url_dopo_step3}")
+                raise Exception(f"Documento 'Company Card Completa' non disponibile per questo CF. URL: {url_dopo_step3}")
+            elif "/Storage/Document/" not in url_dopo_step3:
                 print(f"   ❌ ERRORE CRITICO: Non siamo sulla Company Card Completa!")
                 print(f"      URL atteso: contenente '/Storage/Document/'")
                 print(f"      URL attuale: {url_dopo_step3}")
@@ -1574,22 +1941,48 @@ class CribisNuovaRicerca:
             # Estrai dati usando regex dalla pagina HTML
             dati_estratti = self._estrai_dati_finanziari_da_pagina(html_content, codice_fiscale)
 
-            # STEP 5: Prova download PDF dalla pagina corrente
-            try:
-                pdf_res = self.scarica_pdf_company_card_corrente(codice_fiscale)
-                if pdf_res.get("success"):
-                    dati_estratti["pdf_filename"] = pdf_res.get("filename")
-                else:
-                    dati_estratti["pdf_note"] = pdf_res.get("reason")
-            except Exception as e:
-                dati_estratti["pdf_note"] = f"Errore download PDF: {e}"
+            # NOTA: Il download PDF viene gestito da _scarica_dati_finanziari in dimensione_impresa_pmi.py
+            # per evitare duplicazioni. Qui estraiamo solo i dati dalla pagina.
             
             print(f"✅ Dati estratti: {dati_estratti}")
             
             return dati_estratti
             
         except Exception as e:
-            print(f"❌ Errore estrazione dati web: {e}")
+            # ERRORE CRITICO: Se è un errore di navigazione/bottone/pagina, PROPAGA invece di restituire dict
+            # Questi errori devono BLOCCARE il processo, non continuare con dati vuoti
+            error_msg = str(e).lower()
+            # Frasi specifiche che indicano errori CRITICI (blocca processo)
+            errori_critici = [
+                "bottone 'richiedi'",
+                "richiedi.*non trovato",
+                "pagina errata dopo click",
+                "non siamo sulla company card",
+                "container.*trovato.*bottone.*mancante",
+                "impossibile continuare",
+                "step 3 fallito",
+                "bottone.*company card.*non trovato"
+            ]
+            
+            # Verifica se contiene una frase critica (match parziale più preciso)
+            is_critico = (
+                ("bottone" in error_msg and ("richiedi" in error_msg or "non trovato" in error_msg)) or
+                "pagina errata" in error_msg or
+                "non siamo sulla company card" in error_msg or
+                "impossibile continuare" in error_msg or
+                "step 3 fallito" in error_msg or
+                ("container" in error_msg and "trovato" in error_msg and "mancante" in error_msg)
+            )
+            
+            if is_critico:
+                print(f"❌ ERRORE CRITICO (propago): {e}")
+                import traceback
+                traceback.print_exc()
+                # PROPAGA l'eccezione per bloccare il processo
+                raise
+            
+            # Per altri errori non critici, restituisci dict (es. dati finanziari non trovati nella pagina)
+            print(f"❌ Errore estrazione dati web (non critico): {e}")
             return {
                 "errore": f"Errore estrazione: {str(e)}",
                 "cf": codice_fiscale,

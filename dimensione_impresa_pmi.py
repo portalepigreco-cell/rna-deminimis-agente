@@ -123,9 +123,9 @@ class CalcolatoreDimensionePMI:
             print(f"\n2️⃣ DOWNLOAD DATI FINANZIARI")
             print("-" * 70)
             
-            # 🧪 MODALITÀ TEST: limita a 3 società per velocità (disabilitato in produzione)
+            # 🧪 MODALITÀ TEST: disabilitata per processare tutte le società
             import os
-            TEST_MODE = not (('RENDER' in os.environ) or (os.environ.get('FLASK_ENV') == 'production'))
+            TEST_MODE = False  # Disabilitata: processiamo sempre TUTTE le società
             MAX_SOCIETA_TEST = 3
             
             if TEST_MODE:
@@ -303,53 +303,54 @@ class CalcolatoreDimensionePMI:
         """
         Scarica Company Card Completa ed estrae dati finanziari.
         
+        IMPORTANTE: Se non trova il bottone "Richiedi" o non entra nella Company Card,
+        solleva Exception per BLOCCARE il processo (non continuare con dati vuoti).
+        
         Args:
             codice_fiscale (str): CF dell'azienda
             ragione_sociale (str): Nome azienda
             
         Returns:
             dict: Dati finanziari estratti
+            
+        Raises:
+            Exception: Se non trova il bottone Richiedi o non entra nella Company Card
         """
-        try:
-            # Usa il metodo di Cribis per aprire Company Card ed estrarre dati dalla pagina
-            dati = self.cribis.scarica_company_card_completa(codice_fiscale)
+        # CRITICO: Non catturare eccezioni da scarica_company_card_completa
+        # Se solleva Exception (bottone non trovato, pagina errata), PROPAGA per bloccare
+        
+        # Usa il metodo di Cribis per aprire Company Card ed estrarre dati dalla pagina
+        # Se questo fallisce (Exception), viene propagata e blocca il processo
+        dati = self.cribis.scarica_company_card_completa(codice_fiscale)
 
-            # Prova a scaricare anche il PDF dalla pagina corrente (link "Scarica")
-            try:
-                pdf_res = self.cribis.scarica_pdf_company_card_corrente(codice_fiscale)
-                if pdf_res.get("success"):
-                    dati["pdf_filename"] = pdf_res.get("filename")
-                else:
-                    # Mantieni l'informazione del perché non disponibile
-                    dati["pdf_note"] = pdf_res.get("reason")
-            except Exception as e:
-                dati["pdf_note"] = f"Errore download PDF: {e}"
-            
-            # Se c'è un errore, restituisci comunque dati strutturati
-            if "errore" in dati:
-                print(f"   ⚠️  Errore: {dati['errore']}")
-                return {
-                    "personale": None,
-                    "fatturato": None,
-                    "attivo": None,
-                    "anno_riferimento": "N/D",
-                    "stato_dati": "errore",
-                    "note": f"Errore: {dati['errore']}"
-                }
-            
-            # Restituisci dati estratti
-            return dati
-            
+        # Prova a scaricare anche il PDF dalla pagina corrente (link "Scarica")
+        # Questa parte può fallire senza bloccare (il PDF è opzionale)
+        try:
+            pdf_res = self.cribis.scarica_pdf_company_card_corrente(codice_fiscale)
+            if pdf_res.get("success"):
+                dati["pdf_filename"] = pdf_res.get("filename")
+            else:
+                # Mantieni l'informazione del perché non disponibile
+                dati["pdf_note"] = pdf_res.get("reason")
         except Exception as e:
-            print(f"   ❌ Errore download: {str(e)}")
+            dati["pdf_note"] = f"Errore download PDF: {e}"
+            # Non bloccare per errori PDF, è opzionale
+        
+        # Se c'è un errore nei dati (es. dati finanziari non trovati nella pagina),
+        # restituisci comunque dati strutturati (non è critico)
+        if "errore" in dati:
+            print(f"   ⚠️  Errore: {dati['errore']}")
             return {
                 "personale": None,
                 "fatturato": None,
                 "attivo": None,
                 "anno_riferimento": "N/D",
                 "stato_dati": "errore",
-                "note": f"Errore: {str(e)}"
+                "note": f"Errore: {dati['errore']}"
             }
+        
+        # Restituisci dati estratti
+        return dati
     
     def _calcola_aggregati_ue(self, principale: Dict, collegate: List[Dict], 
                               partner: List[Dict]) -> Dict:

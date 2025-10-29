@@ -43,3 +43,6 @@ database_piva_old.json
 # File Playwright
 playwright-report/
 test-results/
+
+# Cartella downloads (PDF scaricati)
+downloads/

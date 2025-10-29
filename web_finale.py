@@ -694,7 +694,8 @@ def _worker_esegui_calcolo_dimensione(task_id: str, partita_iva: str):
                 "fatturato": risultato["impresa_principale"].get("fatturato"),
                 "attivo": risultato["impresa_principale"].get("attivo"),
                 "anno_riferimento": risultato["impresa_principale"].get("anno_riferimento", "N/D"),
-                "stato_dati": risultato["impresa_principale"].get("stato_dati", "assenti")
+                "stato_dati": risultato["impresa_principale"].get("stato_dati", "assenti"),
+                "pdf_filename": risultato["impresa_principale"].get("pdf_filename")
             },
             "gruppo_societario": {
                 "collegate": [
@@ -705,7 +706,8 @@ def _worker_esegui_calcolo_dimensione(task_id: str, partita_iva: str):
                         "personale": soc.get("personale"),
                         "fatturato": soc.get("fatturato"),
                         "attivo": soc.get("attivo"),
-                        "stato_dati": soc.get("stato_dati", "assenti")
+                        "stato_dati": soc.get("stato_dati", "assenti"),
+                        "pdf_filename": soc.get("pdf_filename")
                     }
                     for soc in risultato.get("societa_collegate", [])
                 ],
@@ -717,7 +719,8 @@ def _worker_esegui_calcolo_dimensione(task_id: str, partita_iva: str):
                         "personale": soc.get("personale"),
                         "fatturato": soc.get("fatturato"),
                         "attivo": soc.get("attivo"),
-                        "stato_dati": soc.get("stato_dati", "assenti")
+                        "stato_dati": soc.get("stato_dati", "assenti"),
+                        "pdf_filename": soc.get("pdf_filename")
                     }
                     for soc in risultato.get("societa_partner", [])
                 ],
