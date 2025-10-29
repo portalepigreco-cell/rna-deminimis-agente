@@ -236,6 +236,22 @@ class CribisNuovaRicerca:
         try:
             print(f"\n🔍 Ricerca P.IVA nel campo principale: {partita_iva}")
             
+            # Vai sempre alla Home per evitare stati come sessionExpired o pagine Storage
+            try:
+                self.page.goto(f"{self.base_url}/#Home/Index", wait_until="domcontentloaded")
+                self.page.wait_for_load_state("networkidle")
+                time.sleep(1)
+            except Exception:
+                pass
+            
+            # Se per qualche motivo siamo finiti di nuovo su LogOn, prova a riloggarti
+            if "LogOn" in (self.page.url or ""):
+                print("⚠️  Redirect a LogOn; provo login e torno in Home...")
+                if not self.login():
+                    return False
+                self.page.goto(f"{self.base_url}/#Home/Index", wait_until="domcontentloaded")
+                time.sleep(1)
+            
             # Selettore SPECIFICO fornito dall'utente
             selettori_campo = [
                 'input[title="Inserisci i termini da cercare"]',  # SELETTORE PRINCIPALE
@@ -243,7 +259,11 @@ class CribisNuovaRicerca:
                 'input[placeholder*="Cerca per nome"]',
                 'header input[type="text"]',
                 '.search-input',
-                'input.form-control[type="text"]'
+                'input.form-control[type="text"]',
+                # Nuovi fallback robusti
+                'input[placeholder*="partita iva"]',
+                'input[placeholder*="Partita IVA"]',
+                'input[placeholder*="partita"]'
             ]
             
             campo_ricerca = None
@@ -257,12 +277,22 @@ class CribisNuovaRicerca:
                     continue
             
             if not campo_ricerca:
-                print("❌ Campo ricerca principale non trovato")
-                return False
+                print("❌ Campo ricerca principale non trovato — provo focus via JS sul primo input visibile in header")
+                try:
+                    self.page.evaluate(
+                        "() => { const i = document.querySelector('header input[type=\\'text\\']'); if(i){ i.focus(); } }"
+                    )
+                    campo_ricerca = self.page.query_selector('header input[type="text"]')
+                except Exception:
+                    campo_ricerca = None
+                if not campo_ricerca:
+                    return False
             
             # Inserisci P.IVA
             print(f"📝 Inserimento P.IVA: {partita_iva}")
-            campo_ricerca.fill(partita_iva)
+            campo_ricerca.click()
+            campo_ricerca.fill("")
+            campo_ricerca.type(partita_iva, delay=50)
             
             # Aspetta un attimo per autocomplete
             time.sleep(1)
