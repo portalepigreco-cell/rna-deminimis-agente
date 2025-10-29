@@ -1296,10 +1296,10 @@ class CribisNuovaRicerca:
                 # Varianti nell'header destro
                 "div.col-md-4.align-right.upcas ul.list.operations li:nth-child(2) a[href*='/Storage/Pdf/']",
                 # Generici robusti
-                "a:has-text(\\"Scarica\\")",
-                "a.label-silver.align-right:has-text(\\"Scarica\\")",
+                'a:has-text("Scarica")',
+                'a.label-silver.align-right:has-text("Scarica")',
                 "a[href*='/Storage/Pdf/']",
-                "text=SCARICA"
+                'text=SCARICA'
             ]
 
             link = None
