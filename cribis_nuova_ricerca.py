@@ -1291,8 +1291,13 @@ class CribisNuovaRicerca:
 
             # Possibili selettori del link "Scarica" (header della Company Card)
             possibili_scarica = [
-                "a:has-text(\"Scarica\")",
-                "a.label-silver.align-right:has-text(\"Scarica\")",
+                # Struttura precisa indicata: ul.list.operations > li:nth-child(2) > a[href*='/Storage/Pdf/']
+                "ul.list.operations li:nth-child(2) a[href*='/Storage/Pdf/']",
+                # Varianti nell'header destro
+                "div.col-md-4.align-right.upcas ul.list.operations li:nth-child(2) a[href*='/Storage/Pdf/']",
+                # Generici robusti
+                "a:has-text(\\"Scarica\\")",
+                "a.label-silver.align-right:has-text(\\"Scarica\\")",
                 "a[href*='/Storage/Pdf/']",
                 "text=SCARICA"
             ]
@@ -1300,7 +1305,7 @@ class CribisNuovaRicerca:
             link = None
             for sel in possibili_scarica:
                 try:
-                    link = self.page.wait_for_selector(sel, timeout=3000)
+                    link = self.page.wait_for_selector(sel, timeout=4000)
                     if link and link.is_visible():
                         break
                 except Exception:
