@@ -1263,6 +1263,88 @@ class CribisNuovaRicerca:
                 "fonte": "pagina_web"
             }
 
+    def scarica_pdf_company_card_corrente(self, codice_fiscale: str) -> dict:
+        """
+        Scarica il PDF della Company Card Completa dalla pagina corrente
+        quando è presente il link "Scarica" in alto a destra.
+
+        Nota: questa funzione assume che ci si trovi già nella pagina
+        della Company Card Completa. Se il link non è presente, restituisce
+        un risultato non bloccante con messaggio esplicativo.
+
+        Args:
+            codice_fiscale (str): CF/P.IVA per nominare il file
+
+        Returns:
+            dict: { success, path, filename, reason }
+        """
+        try:
+            # Assicura cartella downloads/
+            downloads_dir = os.path.join(os.getcwd(), 'downloads')
+            os.makedirs(downloads_dir, exist_ok=True)
+
+            # Costruisci nome file
+            from datetime import datetime
+            data_str = datetime.now().strftime('%Y%m%d')
+            filename = f"CompanyCard_{codice_fiscale}_{data_str}.pdf"
+            target_path = os.path.join(downloads_dir, filename)
+
+            # Possibili selettori del link "Scarica" (header della Company Card)
+            possibili_scarica = [
+                "a:has-text(\"Scarica\")",
+                "a.label-silver.align-right:has-text(\"Scarica\")",
+                "a[href*='/Storage/Pdf/']",
+                "text=SCARICA"
+            ]
+
+            link = None
+            for sel in possibili_scarica:
+                try:
+                    link = self.page.wait_for_selector(sel, timeout=3000)
+                    if link and link.is_visible():
+                        break
+                except Exception:
+                    continue
+
+            if not link:
+                return {
+                    "success": False,
+                    "reason": "Link 'Scarica' non trovato nella pagina",
+                    "path": None,
+                    "filename": None
+                }
+
+            # Attendi evento download e clicca
+            print("⬇️  Avvio download PDF Company Card (attendo evento download)...")
+            with self.page.expect_download(timeout=60000) as download_info:
+                link.click(force=True)
+            download = download_info.value
+
+            # Salva su percorso target
+            download.save_as(target_path)
+            print(f"✅ PDF salvato: {target_path}")
+
+            return {
+                "success": True,
+                "path": target_path,
+                "filename": filename
+            }
+
+        except PlaywrightTimeout:
+            return {
+                "success": False,
+                "reason": "Timeout download PDF",
+                "path": None,
+                "filename": None
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "reason": f"Errore download: {e}",
+                "path": None,
+                "filename": None
+            }
+
 
 # ============================================================================
 # FUNZIONI DI TEST
