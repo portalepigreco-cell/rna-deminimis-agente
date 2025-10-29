@@ -1517,7 +1517,7 @@ class CribisNuovaRicerca:
                     txt = self.page.get_by_text("Scarica", exact=False).first
                     if txt:
                         is_vis_txt = txt.is_visible()
-                        print(f"   {'✅ Testo "Scarica" trovato' if is_vis_txt else '⚠️  Testo "Scarica" trovato ma non visibile'}")
+                        print(f"   {'✅ Testo Scarica trovato' if is_vis_txt else '⚠️  Testo Scarica trovato ma non visibile'}")
                         if is_vis_txt:
                             candidate = txt.locator("xpath=ancestor::a[1]")
                             if candidate:
