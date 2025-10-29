@@ -250,6 +250,31 @@ class CribisNuovaRicerca:
                     pass
             
             if not login_riuscito:
+                # Retry UNA VOLTA: ricarica Home e riprova login (gestisce glitch di Render/lentezza)
+                print("⚠️  Login non verificato, eseguo un retry rapido...")
+                try:
+                    self.page.goto(f"{self.base_url}/#Home/Index", wait_until="domcontentloaded")
+                    time.sleep(2)
+                except Exception:
+                    pass
+                # Prova a trovare di nuovo i campi
+                try:
+                    u = self.page.wait_for_selector('input[name="Username"], input[id="Username"], input[placeholder*="Utente"], input[placeholder*="Username"], input[type="text"]', timeout=3000)
+                    p = self.page.wait_for_selector('input[name="Password"], input[id="Password"], input[placeholder*="Password"], input[type="password"]', timeout=3000)
+                    if u and p:
+                        u.fill(self.username)
+                        p.fill(self.password)
+                        self.page.click('button[type="submit"], input[type="submit"], button:has-text("Login"), button:has-text("Accedi")')
+                        self.page.wait_for_load_state("networkidle")
+                        time.sleep(5)
+                        current_url = self.page.url
+                        if "LogOn" not in current_url:
+                            login_riuscito = True
+                            print("✅ Login verificato al retry")
+                except Exception:
+                    pass
+            
+            if not login_riuscito:
                 print("❌ Login fallito: URL o elementi non corrispondono a sessione autenticata")
                 print(f"   URL attuale: {current_url}")
                 return False
