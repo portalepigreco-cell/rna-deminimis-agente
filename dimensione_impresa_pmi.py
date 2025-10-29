@@ -311,8 +311,19 @@ class CalcolatoreDimensionePMI:
             dict: Dati finanziari estratti
         """
         try:
-            # Usa il metodo di Cribis per scaricare Company Card
+            # Usa il metodo di Cribis per aprire Company Card ed estrarre dati dalla pagina
             dati = self.cribis.scarica_company_card_completa(codice_fiscale)
+
+            # Prova a scaricare anche il PDF dalla pagina corrente (link "Scarica")
+            try:
+                pdf_res = self.cribis.scarica_pdf_company_card_corrente(codice_fiscale)
+                if pdf_res.get("success"):
+                    dati["pdf_filename"] = pdf_res.get("filename")
+                else:
+                    # Mantieni l'informazione del perché non disponibile
+                    dati["pdf_note"] = pdf_res.get("reason")
+            except Exception as e:
+                dati["pdf_note"] = f"Errore download PDF: {e}"
             
             # Se c'è un errore, restituisci comunque dati strutturati
             if "errore" in dati:

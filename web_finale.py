@@ -10,7 +10,7 @@ Uso: python web_finale.py
 Poi vai su: http://localhost:8080
 """
 
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_cors import CORS
 import re
 from datetime import datetime
@@ -549,7 +549,8 @@ def calcola_dimensione_pmi():
                     "fatturato": risultato["impresa_principale"].get("fatturato"),
                     "attivo": risultato["impresa_principale"].get("attivo"),
                     "anno_riferimento": risultato["impresa_principale"].get("anno_riferimento", "N/D"),
-                    "stato_dati": risultato["impresa_principale"].get("stato_dati", "assenti")
+                    "stato_dati": risultato["impresa_principale"].get("stato_dati", "assenti"),
+                    "pdf_filename": risultato["impresa_principale"].get("pdf_filename")
                 },
                 
                 # Gruppo societario
@@ -562,7 +563,8 @@ def calcola_dimensione_pmi():
                             "personale": soc.get("personale"),
                             "fatturato": soc.get("fatturato"),
                             "attivo": soc.get("attivo"),
-                            "stato_dati": soc.get("stato_dati", "assenti")
+                            "stato_dati": soc.get("stato_dati", "assenti"),
+                            "pdf_filename": soc.get("pdf_filename")
                         }
                         for soc in risultato.get("societa_collegate", [])
                     ],
@@ -574,7 +576,8 @@ def calcola_dimensione_pmi():
                             "personale": soc.get("personale"),
                             "fatturato": soc.get("fatturato"),
                             "attivo": soc.get("attivo"),
-                            "stato_dati": soc.get("stato_dati", "assenti")
+                            "stato_dati": soc.get("stato_dati", "assenti"),
+                            "pdf_filename": soc.get("pdf_filename")
                         }
                         for soc in risultato.get("societa_partner", [])
                     ],
@@ -795,6 +798,14 @@ def pmi_job_status(task_id: str):
         payload["error"] = job.get("error")
 
     return jsonify(payload), 200
+
+
+@app.route('/download/<path:filename>')
+def download_file(filename):
+    """Serve i PDF salvati in downloads/"""
+    import os
+    downloads_dir = os.path.join(os.getcwd(), 'downloads')
+    return send_from_directory(downloads_dir, filename, as_attachment=True)
 
 if __name__ == '__main__':
     import os

@@ -244,7 +244,7 @@
 
         .results {
             margin-top: 30px;
-            display: none;
+            display: block; /* Manteniamo sempre visibile il contenitore risultati */
         }
 
         .result-item {
@@ -744,7 +744,7 @@
             
             btn.disabled = true;
             loading.style.display = 'block';
-            results.style.display = 'none';
+            results.style.display = 'block';
             
             try {
                 const response = await fetch('/calcola', {
@@ -982,7 +982,7 @@
             
             // Mostra loading
             document.getElementById('loading').style.display = 'block';
-            document.getElementById('results').style.display = 'none';
+            document.getElementById('results').style.display = 'block';
             
             try {
                 const response = await fetch('/cribis_nuova_ricerca', {
@@ -1418,7 +1418,9 @@
                     const statoDati = soc.stato_dati === 'completi' ? '✅' : (soc.stato_dati === 'parziali' ? '⚠️' : '❌');
                     html += `
                         <div style="background: #1a1a1a; padding: 12px; margin-bottom: 8px; border-radius: 8px;">
-                            <div style="color: #fff; font-weight: 600; margin-bottom: 5px;">${soc.nome} ${statoDati}</div>
+                            <div style=\"color: #fff; font-weight: 600; margin-bottom: 5px; display:flex; align-items:center; gap:10px;\">${soc.nome} ${statoDati}
+                                ${soc.pdf_filename ? `<a href=\"/download/${soc.pdf_filename}\" target=\"_blank\" style=\"background:#9b59b6; color:#fff; padding:6px 10px; border-radius:6px; text-decoration:none; font-size:0.85em;\">⬇️ Scarica PDF</a>` : ''}
+                            </div>
                             <div style="color: #a0a0a0; font-size: 0.9em;">
                                 CF: ${soc.cf} | Quota: ${soc.percentuale}%<br>
                                 ${soc.personale !== null ? `👥 ${soc.personale} ULA` : '👥 N/D'} | 
@@ -1442,7 +1444,9 @@
                     const statoDati = soc.stato_dati === 'completi' ? '✅' : (soc.stato_dati === 'parziali' ? '⚠️' : '❌');
                     html += `
                         <div style="background: #1a1a1a; padding: 12px; margin-bottom: 8px; border-radius: 8px;">
-                            <div style="color: #fff; font-weight: 600; margin-bottom: 5px;">${soc.nome} ${statoDati}</div>
+                            <div style=\"color: #fff; font-weight: 600; margin-bottom: 5px; display:flex; align-items:center; gap:10px;\">${soc.nome} ${statoDati}
+                                ${soc.pdf_filename ? `<a href=\"/download/${soc.pdf_filename}\" target=\"_blank\" style=\"background:#9b59b6; color:#fff; padding:6px 10px; border-radius:6px; text-decoration:none; font-size:0.85em;\">⬇️ Scarica PDF</a>` : ''}
+                            </div>
                             <div style="color: #a0a0a0; font-size: 0.9em;">
                                 CF: ${soc.cf} | Quota: ${soc.percentuale}% (pro-rata)<br>
                                 ${soc.personale !== null ? `👥 ${soc.personale} ULA` : '👥 N/D'} | 
