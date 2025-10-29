@@ -320,6 +320,28 @@
             color: #888;
             font-size: 0.9em;
         }
+
+        /* Tooltip semplice su hover */
+        .tip { position: relative; display: inline-block; cursor: help; }
+        .tip .tiptext {
+            visibility: hidden;
+            background: #333;
+            color: #fff;
+            text-align: center;
+            padding: 6px 8px;
+            border-radius: 6px;
+            position: absolute;
+            z-index: 10;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            white-space: nowrap;
+            font-size: 12px;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+        }
+        .tip:hover .tiptext { visibility: visible; opacity: 1; }
     </style>
 </head>
 <body>
@@ -1332,6 +1354,13 @@
         
         function mostraRisultatiPMI(data) {
             const resultsDiv = document.getElementById('results');
+            function renderStatusIcon(stato) {
+                let emoji = '❌';
+                let text = 'Dati assenti';
+                if (stato === 'parziali') { emoji = '⚠️'; text = 'Dati parziali'; }
+                if (stato === 'completi') { emoji = '✅'; text = 'Dati completi'; }
+                return `<span class="tip">${emoji}<span class="tiptext">${text}</span></span>`;
+            }
             
             // Determina colore classificazione
             let colorClasse = '#2ed573'; // Micro/Piccola = verde
@@ -1415,7 +1444,7 @@
                     <div style="margin-top: 10px;">`;
                 
                 data.gruppo_societario.collegate.forEach(soc => {
-                    const statoDati = soc.stato_dati === 'completi' ? '✅' : (soc.stato_dati === 'parziali' ? '⚠️' : '❌');
+                    const statoDati = renderStatusIcon(soc.stato_dati);
                     html += `
                         <div style="background: #1a1a1a; padding: 12px; margin-bottom: 8px; border-radius: 8px;">
                             <div style=\"color: #fff; font-weight: 600; margin-bottom: 5px; display:flex; align-items:center; gap:10px;\">${soc.nome} ${statoDati}
@@ -1441,7 +1470,7 @@
                     <div style="margin-top: 10px;">`;
                 
                 data.gruppo_societario.partner.forEach(soc => {
-                    const statoDati = soc.stato_dati === 'completi' ? '✅' : (soc.stato_dati === 'parziali' ? '⚠️' : '❌');
+                    const statoDati = renderStatusIcon(soc.stato_dati);
                     html += `
                         <div style="background: #1a1a1a; padding: 12px; margin-bottom: 8px; border-radius: 8px;">
                             <div style=\"color: #fff; font-weight: 600; margin-bottom: 5px; display:flex; align-items:center; gap:10px;\">${soc.nome} ${statoDati}
