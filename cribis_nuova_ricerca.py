@@ -1227,30 +1227,133 @@ class CribisNuovaRicerca:
                         print("   🔎 STEP 3.2: Cerco testo 'Company Card Completa'...")
                         card_sel = None
                         try:
-                            # Prova diversi selettori per il testo
-                            for text_sel in [
+                            # PRIMA: Log di debug per vedere cosa c'è nella modale
+                            try:
+                                all_text = modale.inner_text() if modale and modale.count() > 0 else ""
+                                if "company" in all_text.lower() or "card" in all_text.lower():
+                                    print("   🔍 DEBUG: Trovati testi con 'company' o 'card' nella modale")
+                                    # Cerca tutte le occorrenze
+                                    lines = all_text.split('\n')
+                                    matching_lines = [line.strip() for line in lines if 'company' in line.lower() or 'card' in line.lower()]
+                                    if matching_lines:
+                                        print(f"   📋 Linee rilevanti trovate ({len(matching_lines)}):")
+                                        for i, line in enumerate(matching_lines[:10], 1):  # Primi 10
+                                            print(f"      {i}. {line[:80]}")
+                            except Exception as debug_err:
+                                print(f"   ⚠️  Errore debug modale: {debug_err}")
+                            
+                            # Prova diversi selettori per il testo (più varianti)
+                            text_selectors = [
                                 "text=Company Card Completa",
                                 "text=COMPANY CARD COMPLETA",
                                 "text=Company Card",
+                                "text=COMPANY CARD",
+                                "text=CompanyCard",
                                 '.card:has-text("Company Card Completa")',
-                                '*:has-text("Company Card Completa")'
-                            ]:
+                                '.card:has-text("COMPANY CARD COMPLETA")',
+                                '*:has-text("Company Card Completa")',
+                                '*:has-text("Company Card")',
+                                # Case-insensitive con JavaScript
+                            ]
+                            
+                            # Aggiungi ricerca con get_by_text (case-insensitive parziale)
+                            try:
+                                if modale and modale.count() > 0:
+                                    # Cerca qualsiasi elemento che contenga "company" e "card"
+                                    potential_cards = modale.locator('*').filter(has=self.page.get_by_text("Company", exact=False)).filter(has=self.page.get_by_text("Card", exact=False)).all()
+                                    if potential_cards:
+                                        print(f"   🔍 Trovati {len(potential_cards)} elementi potenziali con 'Company' e 'Card'")
+                                        for i, pc in enumerate(potential_cards[:5]):
+                                            try:
+                                                txt = pc.inner_text()[:50]
+                                                print(f"      {i+1}. {txt}...")
+                                            except:
+                                                pass
+                            except Exception:
+                                pass
+                            
+                            for text_sel in text_selectors:
                                 try:
-                                    card_sel = modale.locator(text_sel).first if modale else self.page.locator(text_sel).first
-                                    if card_sel.count() > 0 and card_sel.is_visible():
-                                        print(f"   ✅ Card trovata con: {text_sel}")
-                                        break
-                                except Exception:
+                                    loc = modale.locator(text_sel).first if modale and modale.count() > 0 else self.page.locator(text_sel).first
+                                    if loc.count() > 0:
+                                        is_vis = loc.is_visible()
+                                        if is_vis:
+                                            print(f"   ✅ Card trovata e VISIBILE con: {text_sel}")
+                                            card_sel = loc
+                                            break
+                                        else:
+                                            print(f"   ⚠️  Card trovata ma NON visibile con: {text_sel}")
+                                except Exception as e:
                                     continue
                             
-                            if not card_sel or card_sel.count() == 0:
+                            if not card_sel or (card_sel.count() == 0):
                                 print("   ❌ Card 'Company Card Completa' non trovata nella modale!")
-                                # Screenshot debug
+                                # Prova ricerca più aggressiva: cerca qualsiasi elemento che contiene le parole chiave
                                 try:
-                                    self.page.screenshot(path=f"debug_card_non_trovata_{codice_fiscale}.png", full_page=True)
-                                    print(f"   📸 Screenshot salvato: debug_card_non_trovata_{codice_fiscale}.png")
-                                except Exception:
-                                    pass
+                                    if modale and modale.count() > 0:
+                                        # Usa JavaScript per cercare elementi con testo che contiene "company" e "card"
+                                        try:
+                                            found_info = modale.evaluate("""
+                                                () => {
+                                                    const elements = document.querySelectorAll('.modal-dialog *, .modal-content *, .modal *');
+                                                    for (let el of elements) {
+                                                        const txt = (el.textContent || el.innerText || '').trim();
+                                                        if (txt.toLowerCase().includes('company') && 
+                                                            txt.toLowerCase().includes('card') &&
+                                                            txt.toLowerCase().includes('completa') &&
+                                                            el.offsetParent !== null &&
+                                                            txt.length > 5 && txt.length < 100) {  // visibile e testo ragionevole
+                                                            return {
+                                                                text: txt.substring(0, 200),
+                                                                tag: el.tagName,
+                                                                className: el.className || ''
+                                                            };
+                                                        }
+                                                    }
+                                                    return null;
+                                                }
+                                            """)
+                                            if found_info:
+                                                print(f"   ✅ Card trovata con JavaScript: {found_info['text'][:60]}...")
+                                                # Prova a selezionare usando il testo trovato (prima riga)
+                                                first_line = found_info['text'].split('\n')[0].strip()
+                                                if first_line:
+                                                    try:
+                                                        card_sel = modale.locator(f'text={first_line}').first
+                                                        if card_sel.count() == 0 or not card_sel.is_visible():
+                                                            # Prova ricerca parziale
+                                                            card_sel = modale.get_by_text(first_line[:30], exact=False).first
+                                                    except:
+                                                        pass
+                                        except Exception as js_err:
+                                            pass
+                                        
+                                        # Fallback: cerca elementi che contengono "Company" e "Card" usando get_by_text
+                                        if not card_sel or card_sel.count() == 0:
+                                            try:
+                                                company_elements = modale.get_by_text("Company", exact=False).all()
+                                                for ce in company_elements[:10]:
+                                                    try:
+                                                        txt_ce = ce.inner_text()
+                                                        if 'card' in txt_ce.lower() and 'company' in txt_ce.lower():
+                                                            if ce.is_visible():
+                                                                print(f"   ✅ Card trovata con get_by_text: {txt_ce[:60]}...")
+                                                                card_sel = ce
+                                                                break
+                                                    except:
+                                                        continue
+                                            except Exception:
+                                                pass
+                                except Exception as fuzzy_err:
+                                    print(f"   ⚠️  Errore ricerca fuzzy: {fuzzy_err}")
+                                
+                                # Screenshot debug
+                                if not card_sel:
+                                    try:
+                                        self.page.screenshot(path=f"debug_card_non_trovata_{codice_fiscale}.png", full_page=True)
+                                        print(f"   📸 Screenshot salvato: debug_card_non_trovata_{codice_fiscale}.png")
+                                    except Exception:
+                                        pass
                         except Exception as card_err:
                             print(f"   ⚠️  Errore ricerca card: {card_err}")
                             card_sel = None
