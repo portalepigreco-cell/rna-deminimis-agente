@@ -15,6 +15,8 @@ from flask_cors import CORS
 import re
 from datetime import datetime
 import threading
+import uuid
+import time
 
 app = Flask(__name__)
 CORS(app)
@@ -25,6 +27,10 @@ calcolatore_pmi_globale = None
 lock_calcolo_pmi = threading.Lock()
 # Traccia stato calcolo in corso
 calcolo_in_corso = {"attivo": False, "partita_iva": None}
+
+# Job store in-memory per modalità asincrona su Render
+# Struttura: { task_id: {status, partita_iva, created_at, updated_at, progress, result, error} }
+jobs_store = {}
 
 # Database precaricato con i risultati che abbiamo già testato
 DATABASE_PIVA = {
@@ -619,6 +625,176 @@ def calcola_dimensione_pmi():
         lock_calcolo_pmi.release()
         print("🔓 Lock rilasciato, sistema disponibile per nuove richieste\n")
 
+
+# ===================== MODALITÀ ASINCRONA (Render-safe) =====================
+def _worker_esegui_calcolo_dimensione(task_id: str, partita_iva: str):
+    """
+    Worker in thread separato: esegue il calcolo bloccando il lock Playwright,
+    aggiorna lo stato nel jobs_store e rilascia correttamente il lock.
+    """
+    job = jobs_store.get(task_id)
+    if not job:
+        return
+
+    def _update(status: str = None, progress: str = None, result: dict = None, error: str = None):
+        if status is not None:
+            job["status"] = status
+        if progress is not None:
+            job["progress"] = progress
+        if result is not None:
+            job["result"] = result
+        if error is not None:
+            job["error"] = error
+        job["updated_at"] = time.time()
+
+    try:
+        _update(progress="In attesa di risorse...")
+
+        # Attendi il lock (bloccante): quando disponibile, parti
+        lock_calcolo_pmi.acquire()
+        calcolo_in_corso["attivo"] = True
+        calcolo_in_corso["partita_iva"] = partita_iva
+        _update(status="running", progress="Avvio browser e login...")
+
+        # Import lazy e riuso istanza globale
+        import os
+        from dimensione_impresa_pmi import CalcolatoreDimensionePMI
+
+        is_production = ('RENDER' in os.environ) or (os.environ.get('FLASK_ENV') == 'production')
+
+        global calcolatore_pmi_globale
+        if calcolatore_pmi_globale is None:
+            calcolatore_pmi_globale = CalcolatoreDimensionePMI(headless=is_production)
+            calcolatore_pmi_globale.cribis = None
+
+        calc = calcolatore_pmi_globale
+
+        _update(progress="Estrazione gruppo societario (Cribis)...")
+        # Il metodo interno farà tutto: gruppo + dati + aggregati
+        risultato = calc.calcola_dimensione(partita_iva)
+
+        if risultato.get("risultato") == "errore":
+            _update(status="error", error=risultato.get("errore", "Errore durante il calcolo"))
+            return
+
+        _update(progress="Calcolo aggregati UE e classificazione...")
+
+        # Adatta il payload come nella risposta sincrona
+        risposta = {
+            "risultato": "success",
+            "partita_iva": partita_iva,
+            "data_calcolo": risultato["data_calcolo"],
+            "impresa_principale": {
+                "cf": risultato["impresa_principale"]["cf"],
+                "ragione_sociale": risultato["impresa_principale"].get("ragione_sociale", "N/D"),
+                "personale": risultato["impresa_principale"].get("personale"),
+                "fatturato": risultato["impresa_principale"].get("fatturato"),
+                "attivo": risultato["impresa_principale"].get("attivo"),
+                "anno_riferimento": risultato["impresa_principale"].get("anno_riferimento", "N/D"),
+                "stato_dati": risultato["impresa_principale"].get("stato_dati", "assenti")
+            },
+            "gruppo_societario": {
+                "collegate": [
+                    {
+                        "cf": soc["cf"],
+                        "nome": soc["nome"],
+                        "percentuale": soc["percentuale"],
+                        "personale": soc.get("personale"),
+                        "fatturato": soc.get("fatturato"),
+                        "attivo": soc.get("attivo"),
+                        "stato_dati": soc.get("stato_dati", "assenti")
+                    }
+                    for soc in risultato.get("societa_collegate", [])
+                ],
+                "partner": [
+                    {
+                        "cf": soc["cf"],
+                        "nome": soc["nome"],
+                        "percentuale": soc["percentuale"],
+                        "personale": soc.get("personale"),
+                        "fatturato": soc.get("fatturato"),
+                        "attivo": soc.get("attivo"),
+                        "stato_dati": soc.get("stato_dati", "assenti")
+                    }
+                    for soc in risultato.get("societa_partner", [])
+                ],
+                "numero_collegate": len(risultato.get("societa_collegate", [])),
+                "numero_partner": len(risultato.get("societa_partner", [])),
+                "totale_societa": len(risultato.get("societa_collegate", [])) + len(risultato.get("societa_partner", []))
+            },
+            "aggregati_ue": risultato["aggregati_ue"],
+            "classificazione": risultato["classificazione"],
+            "societa_senza_dati": risultato.get("societa_senza_dati", []),
+            "tempo_elaborazione_secondi": risultato["tempo_elaborazione_secondi"],
+            "fonte": "Cribis X + Raccomandazione UE 2003/361/CE"
+        }
+
+        _update(status="done", progress="Completato", result=risposta)
+
+    except Exception as e:
+        _update(status="error", error=str(e))
+    finally:
+        try:
+            calcolo_in_corso["attivo"] = False
+            calcolo_in_corso["partita_iva"] = None
+            if lock_calcolo_pmi.locked():
+                lock_calcolo_pmi.release()
+        except Exception:
+            pass
+
+
+@app.route('/pmi_job/start', methods=['POST'])
+def pmi_job_start():
+    """
+    Avvia il job asincrono: ritorna subito un task_id.
+    Lo stato è consultabile via /pmi_job/status/<task_id>.
+    """
+    data = request.get_json(silent=True) or {}
+    partita_iva = (data.get('partita_iva') or '').strip()
+
+    if not re.match(r'^\d{11}$', partita_iva):
+        return jsonify({"errore": "P.IVA deve essere di 11 cifre"}), 400
+
+    task_id = uuid.uuid4().hex
+    now = time.time()
+    jobs_store[task_id] = {
+        "status": "queued",
+        "partita_iva": partita_iva,
+        "created_at": now,
+        "updated_at": now,
+        "progress": "In coda",
+        "result": None,
+        "error": None
+    }
+
+    # Avvia worker in background
+    t = threading.Thread(target=_worker_esegui_calcolo_dimensione, args=(task_id, partita_iva), daemon=True)
+    t.start()
+
+    return jsonify({"task_id": task_id, "status": "queued"}), 202
+
+
+@app.route('/pmi_job/status/<task_id>', methods=['GET'])
+def pmi_job_status(task_id: str):
+    job = jobs_store.get(task_id)
+    if not job:
+        return jsonify({"errore": "Task non trovato"}), 404
+
+    payload = {
+        "task_id": task_id,
+        "status": job["status"],
+        "partita_iva": job["partita_iva"],
+        "progress": job.get("progress"),
+        "created_at": job.get("created_at"),
+        "updated_at": job.get("updated_at")
+    }
+
+    if job["status"] == "done":
+        payload["result"] = job.get("result")
+    if job["status"] == "error":
+        payload["error"] = job.get("error")
+
+    return jsonify(payload), 200
 
 if __name__ == '__main__':
     import os

@@ -1248,51 +1248,79 @@
             }, 300000); // 5 minuti
             
             try {
-                console.log('📡 Invio richiesta a /calcola_dimensione_pmi...');
-                
-                const response = await fetch('/calcola_dimensione_pmi', {
+                console.log('📡 Avvio job asincrono /pmi_job/start...');
+                const startResp = await fetch('/pmi_job/start', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        partita_iva: partitaIva
-                    })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ partita_iva: partitaIva })
                 });
-                
-                console.log('📥 Risposta ricevuta, status:', response.status);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                if (!startResp.ok) {
+                    const errData = await startResp.json().catch(() => ({}));
+                    throw new Error(errData.errore || `HTTP ${startResp.status}`);
                 }
-                
-                const data = await response.json();
-                console.log('✅ Dati parsati:', data);
-                
-                // Mostra messaggio di completamento prima di nascondere loading
-                document.getElementById('loading-text').innerText = '✅ Calcolo completato!';
-                document.getElementById('loading-detail').innerText = 'Elaborazione risultati...';
-                
-                // Nascondi loading dopo un breve delay per far vedere il messaggio
-                setTimeout(() => {
-                    document.getElementById('loading').style.display = 'none';
-                    
-                    // Mostra risultati
-                    if (data.risultato === 'success') {
-                        console.log('🎉 Successo! Mostro risultati...');
-                        mostraRisultatiPMI(data);
-                    } else {
-                        console.log('❌ Errore nei dati:', data.errore);
-                        mostraErrorePMI(data.errore || 'Errore sconosciuto', partitaIva);
-                    }
-                }, 1000);
-                
+                const startData = await startResp.json();
+                const taskId = startData.task_id;
+                console.log('🆔 Task creato:', taskId);
+
+                // Polling dello stato ogni 3s
+                await new Promise((resolve, reject) => {
+                    const pollIntervalMs = 3000;
+                    let attempts = 0;
+                    const maxAttempts = 200; // ~10 minuti
+                    const timer = setInterval(async () => {
+                        attempts++;
+                        try {
+                            const statusResp = await fetch(`/pmi_job/status/${taskId}`);
+                            const statusData = await statusResp.json();
+                            // Aggiorna messaggi di loading dal server
+                            if (statusData.progress) {
+                                document.getElementById('loading-detail').innerText = statusData.progress;
+                                if (statusData.status === 'running' && statusData.progress.includes('Estrazione gruppo')) {
+                                    document.getElementById('loading-text').innerText = '🔍 Estrazione gruppo societario...';
+                                } else if (statusData.status === 'running' && statusData.progress.includes('aggregati')) {
+                                    document.getElementById('loading-text').innerText = '🧮 Calcolo aggregati UE...';
+                                } else if (statusData.status === 'queued') {
+                                    document.getElementById('loading-text').innerText = '⏳ In coda...';
+                                } else if (statusData.status === 'running') {
+                                    document.getElementById('loading-text').innerText = '🚀 Calcolo in esecuzione...';
+                                }
+                            }
+
+                            if (statusData.status === 'done') {
+                                clearInterval(timer);
+                                document.getElementById('loading-text').innerText = '✅ Calcolo completato!';
+                                document.getElementById('loading-detail').innerText = 'Elaborazione risultati...';
+                                setTimeout(() => {
+                                    document.getElementById('loading').style.display = 'none';
+                                    mostraRisultatiPMI(statusData.result);
+                                }, 800);
+                                resolve();
+                            } else if (statusData.status === 'error') {
+                                clearInterval(timer);
+                                document.getElementById('loading-text').innerText = '❌ Errore nel calcolo';
+                                document.getElementById('loading-detail').innerText = statusData.error || 'Errore sconosciuto';
+                                setTimeout(() => {
+                                    document.getElementById('loading').style.display = 'none';
+                                    mostraErrorePMI(statusData.error || 'Errore sconosciuto', partitaIva);
+                                }, 1200);
+                                resolve();
+                            } else if (attempts >= maxAttempts) {
+                                clearInterval(timer);
+                                reject(new Error('Timeout operazione'));
+                            }
+                        } catch (e) {
+                            clearInterval(timer);
+                            reject(e);
+                        }
+                    }, pollIntervalMs);
+                });
+
             } catch (error) {
                 console.error('❌ Errore catch:', error);
                 
                 // Mostra messaggio di errore prima di nascondere loading
                 document.getElementById('loading-text').innerText = '❌ Errore di connessione';
-                document.getElementById('loading-detail').innerText = 'Verifica la connessione e riprova...';
+                document.getElementById('loading-detail').innerText = (error && error.message) ? error.message : 'Verifica la connessione e riprova...';
                 
                 // Nascondi loading dopo un breve delay
                 setTimeout(() => {
