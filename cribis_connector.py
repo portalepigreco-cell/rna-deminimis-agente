@@ -10,6 +10,7 @@ Funzionalità:
 - Filtro associate italiane con quota >50%
 """
 
+import os
 import time
 import json
 import re
@@ -32,8 +33,9 @@ class CribisXConnector:
             headless (bool): Se True, Firefox funziona in background
         """
         self.base_url = "https://www2.cribisx.com"
-        self.username = "CC838673"
-        self.password = "27_10_2025__Pigreco_"
+        # Credenziali Cribis: priorità a variabili d'ambiente, poi fallback
+        self.username = os.environ.get('CRIBIS_USERNAME', 'CC838673')
+        self.password = os.environ.get('CRIBIS_PASSWORD', '27_10_2025__Pigreco_')
         self.headless = headless
         self.driver = None
         self.wait = None

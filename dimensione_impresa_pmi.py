@@ -263,17 +263,34 @@ class CalcolatoreDimensionePMI:
             }
             
             # Separa collegate (>50%) e partner (25-50%)
+            # IMPORTANTE: Rimuovi duplicati (l'azienda principale può apparire nelle associate)
             collegate = []
             partner = []
+            cf_principale = principale["cf"]
+            cf_gia_visti = {cf_principale}  # Evita duplicati dell'azienda principale
             
             # La chiave corretta è "associate_italiane_controllate"
             for soc in risultato_cribis.get("associate_italiane_controllate", []):
+                cf_soc = soc.get("cf")
+                
+                # SKIP se è l'azienda principale (duplicato)
+                if cf_soc == cf_principale:
+                    print(f"   ⚠️  Skip duplicato: {soc.get('ragione_sociale', 'N/A')} (CF {cf_soc} - già presente come principale)")
+                    continue
+                
+                # SKIP se già presente (evita duplicati multipli)
+                if cf_soc in cf_gia_visti:
+                    print(f"   ⚠️  Skip duplicato: {soc.get('ragione_sociale', 'N/A')} (CF {cf_soc} - già presente)")
+                    continue
+                
+                cf_gia_visti.add(cf_soc)
+                
                 # Usa la nuova categorizzazione da cribis_nuova_ricerca
                 categoria = soc.get("categoria", "collegata")
                 percentuale_num = soc.get("percentuale_numerica", 100.0)
                 
                 dati_societa = {
-                    "cf": soc["cf"],
+                    "cf": cf_soc,
                     "nome": soc["ragione_sociale"],
                     "percentuale": percentuale_num,
                     "tipo_relazione": categoria

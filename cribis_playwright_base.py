@@ -5,6 +5,7 @@ Basato sul codice fornito dall'utente, integrato nel sistema De Minimis
 """
 
 import json
+import os
 import re
 import time
 from playwright.sync_api import sync_playwright
@@ -20,8 +21,9 @@ class CribisXPlaywright:
             headless (bool): Se True, browser in background
         """
         self.base_url = "https://www2.cribisx.com"
-        self.username = "CC838673"
-        self.password = "27_10_2025__Pigreco_"
+        # Credenziali Cribis: priorità a variabili d'ambiente, poi fallback
+        self.username = os.environ.get('CRIBIS_USERNAME', 'CC838673')
+        self.password = os.environ.get('CRIBIS_PASSWORD', '27_10_2025__Pigreco_')
         self.headless = headless
         self.playwright = None
         self.browser = None

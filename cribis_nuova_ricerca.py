@@ -47,8 +47,9 @@ class CribisNuovaRicerca:
             headless (bool): Se True, browser in background
         """
         self.base_url = "https://www2.cribisx.com"
-        self.username = "CC838673"
-        self.password = "27_10_2025__Pigreco_"
+        # Credenziali Cribis: priorità a variabili d'ambiente, poi fallback
+        self.username = os.environ.get('CRIBIS_USERNAME', 'CC838673')
+        self.password = os.environ.get('CRIBIS_PASSWORD', '27_10_2025__Pigreco_')
         self.headless = headless
         self.playwright = None
         self.browser = None
@@ -2006,18 +2007,26 @@ class CribisNuovaRicerca:
             fatturato = None
             attivo = None
             
-            # Pattern per personale (ULA, dipendenti, etc.)
+            # Pattern per personale: cerca "DIPENDENTI" nella tabella sintesi bilancio
+            # Priorità a "DIPENDENTI" esatto (come nella tabella), poi fallback generico
             personale_patterns = [
-                r'(\d+(?:\.\d+)?)\s*(?:ULA|dipendenti|personale)',
-                r'personale[:\s]*(\d+(?:\.\d+)?)',
-                r'dipendenti[:\s]*(\d+(?:\.\d+)?)'
+                r'DIPENDENTI[^>]*?>\s*(\d+(?:\.\d+)?)',  # DIPENDENTI seguito da valore nella stessa riga/colonna
+                r'DIPENDENTI[^<]*?<td[^>]*>(\d+(?:\.\d+)?)',  # DIPENDENTI in tabella HTML
+                r'DIPENDENTI[\s\S]{0,200}?(\d+(?:\.\d+)?)\s*(?:</td>|</div>|2024)',  # DIPENDENTI con valore nella colonna 2024
+                r'(\d+(?:\.\d+)?)\s*(?:ULA|dipendenti|personale)',  # Fallback generico
+                r'personale[:\s]*(\d+(?:\.\d+)?)',  # Fallback generico
+                r'dipendenti[:\s]*(\d+(?:\.\d+)?)'  # Fallback generico
             ]
             
             for pattern in personale_patterns:
                 match = re.search(pattern, html_content, re.IGNORECASE)
                 if match:
-                    personale = float(match.group(1).replace('.', '').replace(',', '.'))
-                    break
+                    try:
+                        personale = float(match.group(1).replace('.', '').replace(',', '.'))
+                        print(f"   ✅ Personale (DIPENDENTI) trovato: {personale}")
+                        break
+                    except ValueError:
+                        continue
             
             # Pattern per fatturato
             fatturato_patterns = [
@@ -2033,19 +2042,27 @@ class CribisNuovaRicerca:
                     fatturato = float(valore_str)
                     break
             
-            # Pattern per attivo (bilancio)
+            # Pattern per attivo: cerca "TOTALE ATTIVITÀ" nella tabella sintesi bilancio
+            # Priorità a "TOTALE ATTIVITÀ" esatto (come nella tabella), poi fallback generico
             attivo_patterns = [
-                r'attivo[:\s]*(\d+(?:\.\d+){0,2}(?:,\d+)?)',
-                r'totale\s*attivo[:\s]*(\d+(?:\.\d+){0,2}(?:,\d+)?)',
-                r'bilancio[:\s]*(\d+(?:\.\d+){0,2}(?:,\d+)?)'
+                r'TOTALE\s+ATTIVIT[ÀA][^>]*?>\s*(\d+(?:\.\d+){0,2}(?:,\d+)?)',  # TOTALE ATTIVITÀ seguito da valore
+                r'TOTALE\s+ATTIVIT[ÀA][^<]*?<td[^>]*>(\d+(?:\.\d+){0,2}(?:,\d+)?)',  # TOTALE ATTIVITÀ in tabella HTML
+                r'TOTALE\s+ATTIVIT[ÀA][\s\S]{0,200}?(\d+(?:\.\d+){0,2}(?:,\d+)?)\s*(?:</td>|</div>|2024)',  # TOTALE ATTIVITÀ con valore colonna 2024
+                r'attivo[:\s]*(\d+(?:\.\d+){0,2}(?:,\d+)?)',  # Fallback generico
+                r'totale\s*attivo[:\s]*(\d+(?:\.\d+){0,2}(?:,\d+)?)',  # Fallback generico
+                r'bilancio[:\s]*(\d+(?:\.\d+){0,2}(?:,\d+)?)'  # Fallback generico
             ]
             
             for pattern in attivo_patterns:
                 match = re.search(pattern, html_content, re.IGNORECASE)
                 if match:
-                    valore_str = match.group(1).replace('.', '').replace(',', '.')
-                    attivo = float(valore_str)
-                    break
+                    try:
+                        valore_str = match.group(1).replace('.', '').replace(',', '.')
+                        attivo = float(valore_str)
+                        print(f"   ✅ Attivo (TOTALE ATTIVITÀ) trovato: {attivo:,.2f}")
+                        break
+                    except ValueError:
+                        continue
             
             # Determina stato dati
             if personale is not None and fatturato is not None and attivo is not None:
@@ -2270,7 +2287,8 @@ def test_cerca_associate():
     print(f"🧪 Test ricerca associate per P.IVA: {test_piva}")
     print("="*60)
     
-    risultato = cerca_associate_nuova_procedura(test_piva, headless=False)
+    cribis = CribisNuovaRicerca(headless=False)
+    risultato = cribis.cerca_associate(test_piva)
     
     print("\n" + "="*60)
     print("📊 RISULTATO FINALE:")
