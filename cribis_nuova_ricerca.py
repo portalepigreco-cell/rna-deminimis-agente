@@ -1346,7 +1346,11 @@ class CribisNuovaRicerca:
                 'a:has-text("Scarica")',
                 'a.label-silver.align-right:has-text("Scarica")',
                 "a[href*='/Storage/Pdf/']",
-                'text=SCARICA'
+                'text=SCARICA',
+                # XPATH: primo <a> che contiene esattamente il testo Scarica
+                "xpath=(//a[normalize-space(text())='Scarica'])[1]",
+                # XPATH: risalita dal testo 'Scarica' all'antenato <a>
+                "xpath=(//*/text()[contains(., 'Scarica')]/ancestor::a)[1]"
             ]
 
             link = None
@@ -1357,6 +1361,17 @@ class CribisNuovaRicerca:
                         break
                 except Exception:
                     continue
+
+            if not link:
+                # Ultimo tentativo: cerca un elemento con testo 'Scarica' e risali al link più vicino
+                try:
+                    txt = self.page.get_by_text("Scarica", exact=False).first
+                    if txt and txt.is_visible():
+                        candidate = txt.locator("xpath=ancestor::a[1]")
+                        if candidate and candidate.is_visible():
+                            link = candidate
+                except Exception:
+                    pass
 
             if not link:
                 return {
