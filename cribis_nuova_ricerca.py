@@ -1187,39 +1187,142 @@ class CribisNuovaRicerca:
             
             # STEP 3: Apri Company Card Completa (Richiedi)
             print("📄 STEP 3: Apro Company Card Completa (Richiedi)...")
+            print(f"   📍 URL corrente prima modale: {self.page.url}")
+            
             if not self.clicca_tutti_prodotti_cribis_dettaglio():
                 print("⚠️  Impossibile aprire 'Tutti i prodotti' - provo comunque estrazione dalla pagina dettaglio")
             else:
+                print("   ✅ Modale 'Tutti i prodotti' aperta")
                 # Cerca nella modale la card "Company Card Completa" e clicca "Richiedi"
                 try:
-                    print("🔎 Cerco card 'Company Card Completa' nella modale...")
-                    modale = self.page.locator('.modal-dialog, .modal-content, .modal').first
-                    if modale:
+                    print("   🔎 STEP 3.1: Cerco card 'Company Card Completa' nella modale...")
+                    
+                    # Prova diversi selettori per la modale
+                    modale = None
+                    for modal_sel in ['.modal-dialog', '.modal-content', '.modal', '[role="dialog"]']:
+                        try:
+                            modale = self.page.locator(modal_sel).first
+                            if modale.count() > 0:
+                                print(f"   ✅ Modale trovata con selettore: {modal_sel}")
+                                break
+                        except Exception as e:
+                            print(f"   ⚠️  Selettore {modal_sel} non funziona: {e}")
+                            continue
+                    
+                    if not modale or modale.count() == 0:
+                        print("   ❌ Nessuna modale trovata!")
+                        # Prova a cercare direttamente nella pagina
+                        print("   🔍 Provo a cercare 'Company Card Completa' direttamente nella pagina...")
+                    else:
                         # scroll in fondo
                         try:
+                            print("   📜 Scrolling modale verso il basso...")
                             modale.evaluate("element => element.scrollTop = element.scrollHeight")
                             time.sleep(1)
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            print(f"   ⚠️  Errore scroll modale: {e}")
+                        
                         # trova bottone Richiedi all'interno della card
-                        card_sel = modale.locator("text=Company Card Completa").first
-                        if card_sel and card_sel.is_visible():
-                            parent = card_sel
-                            for _ in range(8):
+                        print("   🔎 STEP 3.2: Cerco testo 'Company Card Completa'...")
+                        card_sel = None
+                        try:
+                            # Prova diversi selettori per il testo
+                            for text_sel in [
+                                "text=Company Card Completa",
+                                "text=COMPANY CARD COMPLETA",
+                                "text=Company Card",
+                                '.card:has-text("Company Card Completa")',
+                                '*:has-text("Company Card Completa")'
+                            ]:
                                 try:
-                                    parent = parent.locator('..')
-                                    btns = parent.locator('button:has-text("Richiedi"), a:has-text("Richiedi")').all()
-                                    if btns:
-                                        with self.page.context.expect_page(timeout=180000) as popup_info:
-                                            btns[0].click(force=True)
-                                        nuova_tab = popup_info.value
-                                        self.page = nuova_tab
-                                        self.page.wait_for_load_state("domcontentloaded")
+                                    card_sel = modale.locator(text_sel).first if modale else self.page.locator(text_sel).first
+                                    if card_sel.count() > 0 and card_sel.is_visible():
+                                        print(f"   ✅ Card trovata con: {text_sel}")
                                         break
                                 except Exception:
+                                    continue
+                            
+                            if not card_sel or card_sel.count() == 0:
+                                print("   ❌ Card 'Company Card Completa' non trovata nella modale!")
+                                # Screenshot debug
+                                try:
+                                    self.page.screenshot(path=f"debug_card_non_trovata_{codice_fiscale}.png", full_page=True)
+                                    print(f"   📸 Screenshot salvato: debug_card_non_trovata_{codice_fiscale}.png")
+                                except Exception:
+                                    pass
+                        except Exception as card_err:
+                            print(f"   ⚠️  Errore ricerca card: {card_err}")
+                            card_sel = None
+                        
+                        if card_sel and card_sel.count() > 0:
+                            print("   🔎 STEP 3.3: Cerco bottone 'Richiedi' nella card...")
+                            parent = card_sel
+                            bottone_trovato = False
+                            
+                            for i in range(8):
+                                try:
+                                    print(f"   🔄 Tentativo {i+1}/8: risalgo al parent...")
+                                    parent = parent.locator('..')
+                                    
+                                    # Prova diversi selettori per il bottone
+                                    selettori_btn = [
+                                        'button:has-text("Richiedi")',
+                                        'a:has-text("Richiedi")',
+                                        'button.btn:has-text("Richiedi")',
+                                        'a.btn:has-text("Richiedi")',
+                                        '*[role="button"]:has-text("Richiedi")',
+                                        '*:has-text("Richiedi")'
+                                    ]
+                                    
+                                    btns = []
+                                    for btn_sel in selettori_btn:
+                                        try:
+                                            btns_found = parent.locator(btn_sel).all()
+                                            if btns_found:
+                                                btns.extend(btns_found)
+                                                print(f"   ✅ Trovati {len(btns_found)} bottoni con selettore: {btn_sel}")
+                                        except Exception:
+                                            continue
+                                    
+                                    if btns:
+                                        print(f"   ✅ Totale {len(btns)} bottoni 'Richiedi' trovati!")
+                                        try:
+                                            print("   🖱️  STEP 3.4: Click su 'Richiedi' (attendo nuova tab, timeout 3min)...")
+                                            with self.page.context.expect_page(timeout=180000) as popup_info:
+                                                btns[0].click(force=True)
+                                            print("   ✅ Nuova tab rilevata!")
+                                            nuova_tab = popup_info.value
+                                            self.page = nuova_tab
+                                            print(f"   📍 URL nuova tab: {self.page.url}")
+                                            self.page.wait_for_load_state("domcontentloaded")
+                                            print("   ✅ Pagina caricata, sono sulla Company Card Completa!")
+                                            bottone_trovato = True
+                                            break
+                                        except Exception as e:
+                                            print(f"   ❌ Errore click o attesa nuova tab: {e}")
+                                            import traceback
+                                            traceback.print_exc()
+                                    else:
+                                        print(f"   ⚠️  Nessun bottone 'Richiedi' trovato a livello {i+1}")
+                                except Exception as e:
+                                    print(f"   ⚠️  Errore livello {i+1}: {e}")
                                     break
+                            
+                            if not bottone_trovato:
+                                print("   ❌ Bottone 'Richiedi' non trovato dopo 8 tentativi!")
+                                # Screenshot finale
+                                try:
+                                    self.page.screenshot(path=f"debug_richiedi_non_trovato_{codice_fiscale}.png", full_page=True)
+                                    print(f"   📸 Screenshot salvato: debug_richiedi_non_trovato_{codice_fiscale}.png")
+                                except Exception:
+                                    pass
+                                        
                 except Exception as e:
-                    print(f"⚠️  Errore nella selezione Company Card Completa: {e}")
+                    print(f"   ❌ ERRORE nella selezione Company Card Completa: {e}")
+                    import traceback
+                    traceback.print_exc()
+            
+            print(f"   📍 URL dopo STEP 3: {self.page.url}")
 
             # STEP 4: Estrai dati dalla pagina attuale (Company Card se aperta, altrimenti dettaglio)
             print("📊 STEP 4: Estrazione dati dalla pagina web...")
@@ -1356,6 +1459,9 @@ class CribisNuovaRicerca:
             dict: { success, path, filename, reason }
         """
         try:
+            print(f"⬇️  STEP 5: Tentativo download PDF per {codice_fiscale}...")
+            print(f"   📍 URL pagina corrente: {self.page.url}")
+            
             # Assicura cartella downloads/
             downloads_dir = os.path.join(os.getcwd(), 'downloads')
             os.makedirs(downloads_dir, exist_ok=True)
@@ -1384,50 +1490,123 @@ class CribisNuovaRicerca:
             ]
 
             link = None
-            for sel in possibili_scarica:
+            selettore_usato = None
+            print(f"   🔎 Provo {len(possibili_scarica)} selettori per trovare link 'Scarica'...")
+            
+            for idx, sel in enumerate(possibili_scarica, 1):
                 try:
+                    print(f"   🔄 Tentativo {idx}/{len(possibili_scarica)}: {sel[:60]}...")
                     link = self.page.wait_for_selector(sel, timeout=4000)
-                    if link and link.is_visible():
-                        break
-                except Exception:
+                    if link:
+                        is_vis = link.is_visible()
+                        print(f"      {'✅ Link trovato e visibile!' if is_vis else '⚠️  Link trovato ma non visibile'}")
+                        if is_vis:
+                            selettore_usato = sel
+                            break
+                        else:
+                            print(f"      ⚠️  Elemento non visibile, provo prossimo selettore...")
+                            link = None
+                except Exception as e:
+                    print(f"      ❌ Non trovato: {str(e)[:80]}")
                     continue
 
             if not link:
+                print("   ⚠️  Selettori principali falliti, ultimo tentativo con get_by_text...")
                 # Ultimo tentativo: cerca un elemento con testo 'Scarica' e risali al link più vicino
                 try:
                     txt = self.page.get_by_text("Scarica", exact=False).first
-                    if txt and txt.is_visible():
-                        candidate = txt.locator("xpath=ancestor::a[1]")
-                        if candidate and candidate.is_visible():
-                            link = candidate
-                except Exception:
-                    pass
+                    if txt:
+                        is_vis_txt = txt.is_visible()
+                        print(f"   {'✅ Testo "Scarica" trovato' if is_vis_txt else '⚠️  Testo "Scarica" trovato ma non visibile'}")
+                        if is_vis_txt:
+                            candidate = txt.locator("xpath=ancestor::a[1]")
+                            if candidate:
+                                is_vis_cand = candidate.is_visible()
+                                print(f"   {'✅ Link candidato trovato!' if is_vis_cand else '⚠️  Link candidato non visibile'}")
+                                if is_vis_cand:
+                                    link = candidate
+                                    selettore_usato = "get_by_text + ancestor::a"
+                except Exception as e:
+                    print(f"   ❌ Ultimo tentativo fallito: {e}")
 
             if not link:
+                print("   ❌ Link 'Scarica' NON TROVATO nella pagina!")
+                print("   📸 Faccio screenshot per debug...")
+                try:
+                    debug_screenshot = f"debug_scarica_non_trovato_{codice_fiscale}.png"
+                    self.page.screenshot(path=debug_screenshot, full_page=True)
+                    print(f"   📸 Screenshot salvato: {debug_screenshot}")
+                    
+                    # Prova anche a vedere tutti i link nella pagina
+                    try:
+                        all_links = self.page.locator('a').all()
+                        print(f"   🔗 Trovati {len(all_links)} link totali nella pagina")
+                        scarica_texts = []
+                        for i, lnk in enumerate(all_links[:20]):  # Primi 20
+                            try:
+                                txt = lnk.inner_text().strip()
+                                if 'scarica' in txt.lower():
+                                    href = lnk.get_attribute('href') or 'N/A'
+                                    scarica_texts.append(f"   Link {i}: '{txt}' -> href={href[:60]}")
+                            except:
+                                pass
+                        if scarica_texts:
+                            print("   🔍 Link che contengono 'scarica':")
+                            for s in scarica_texts:
+                                print(s)
+                        else:
+                            print("   ⚠️  Nessun link con testo 'scarica' trovato nei primi 20 link")
+                    except Exception as e:
+                        print(f"   ⚠️  Errore analisi link: {e}")
+                except Exception as e:
+                    print(f"   ⚠️  Errore screenshot: {e}")
+                    
                 return {
                     "success": False,
                     "reason": "Link 'Scarica' non trovato nella pagina",
                     "path": None,
                     "filename": None
                 }
+            
+            print(f"   ✅ Link 'Scarica' trovato! (Selettore: {selettore_usato})")
+            try:
+                href_link = link.get_attribute('href')
+                print(f"   🔗 href del link: {href_link[:100] if href_link else 'N/A'}")
+            except:
+                pass
 
             # Attendi evento download e clicca (timeout alto per PDF grandi)
-            print("⬇️  Avvio download PDF Company Card (attendo evento download, timeout 2 minuti)...")
-            with self.page.expect_download(timeout=120000) as download_info:
-                link.click(force=True)
-            download = download_info.value
+            print("   🖱️  Click su link 'Scarica' (attendo evento download, timeout 2 minuti)...")
+            try:
+                with self.page.expect_download(timeout=120000) as download_info:
+                    link.click(force=True)
+                download = download_info.value
+                print("   ✅ Evento download ricevuto!")
 
-            # Salva su percorso target
-            download.save_as(target_path)
-            print(f"✅ PDF salvato: {target_path}")
+                # Salva su percorso target
+                print(f"   💾 Salvo PDF in: {target_path}")
+                download.save_as(target_path)
+                
+                # Verifica che il file esista
+                if os.path.exists(target_path):
+                    file_size = os.path.getsize(target_path)
+                    print(f"   ✅ PDF salvato con successo! Dimensione: {file_size:,} bytes ({file_size/1024:.1f} KB)")
+                else:
+                    print(f"   ⚠️  File non trovato dopo save_as!")
 
-            return {
-                "success": True,
-                "path": target_path,
-                "filename": filename
-            }
+                return {
+                    "success": True,
+                    "path": target_path,
+                    "filename": filename
+                }
+            except Exception as click_err:
+                print(f"   ❌ Errore durante click o download: {click_err}")
+                import traceback
+                traceback.print_exc()
+                raise
 
         except PlaywrightTimeout:
+            print("   ❌ TIMEOUT: Download non completato entro 2 minuti")
             return {
                 "success": False,
                 "reason": "Timeout download PDF",
@@ -1435,6 +1614,9 @@ class CribisNuovaRicerca:
                 "filename": None
             }
         except Exception as e:
+            print(f"   ❌ ERRORE download PDF: {e}")
+            import traceback
+            traceback.print_exc()
             return {
                 "success": False,
                 "reason": f"Errore download: {e}",
