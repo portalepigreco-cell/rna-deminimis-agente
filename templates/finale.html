@@ -1447,8 +1447,8 @@
                     const statoDati = renderStatusIcon(soc.stato_dati);
                     html += `
                         <div style="background: #1a1a1a; padding: 12px; margin-bottom: 8px; border-radius: 8px;">
-                            <div style=\"color: #fff; font-weight: 600; margin-bottom: 5px; display:flex; align-items:center; gap:10px;\">${soc.nome} ${statoDati}
-                                ${soc.pdf_filename ? `<a href=\"/download/${soc.pdf_filename}\" target=\"_blank\" style=\"background:#9b59b6; color:#fff; padding:6px 10px; border-radius:6px; text-decoration:none; font-size:0.85em;\">⬇️ Scarica PDF</a>` : ''}
+                            <div style="color: #fff; font-weight: 600; margin-bottom: 5px; display:flex; align-items:center; gap:10px;">${soc.nome} ${statoDati}
+                                ${soc.pdf_filename ? `<a href="/download/${soc.pdf_filename}" target="_blank" style="background:#9b59b6; color:#fff; padding:6px 10px; border-radius:6px; text-decoration:none; font-size:0.85em;">⬇️ Scarica PDF</a>` : ''}
                             </div>
                             <div style="color: #a0a0a0; font-size: 0.9em;">
                                 CF: ${soc.cf} | Quota: ${soc.percentuale}%<br>
@@ -1473,8 +1473,8 @@
                     const statoDati = renderStatusIcon(soc.stato_dati);
                     html += `
                         <div style="background: #1a1a1a; padding: 12px; margin-bottom: 8px; border-radius: 8px;">
-                            <div style=\"color: #fff; font-weight: 600; margin-bottom: 5px; display:flex; align-items:center; gap:10px;\">${soc.nome} ${statoDati}
-                                ${soc.pdf_filename ? `<a href=\"/download/${soc.pdf_filename}\" target=\"_blank\" style=\"background:#9b59b6; color:#fff; padding:6px 10px; border-radius:6px; text-decoration:none; font-size:0.85em;\">⬇️ Scarica PDF</a>` : ''}
+                            <div style="color: #fff; font-weight: 600; margin-bottom: 5px; display:flex; align-items:center; gap:10px;">${soc.nome} ${statoDati}
+                                ${soc.pdf_filename ? `<a href="/download/${soc.pdf_filename}" target="_blank" style="background:#9b59b6; color:#fff; padding:6px 10px; border-radius:6px; text-decoration:none; font-size:0.85em;">⬇️ Scarica PDF</a>` : ''}
                             </div>
                             <div style="color: #a0a0a0; font-size: 0.9em;">
                                 CF: ${soc.cf} | Quota: ${soc.percentuale}% (pro-rata)<br>
