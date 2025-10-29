@@ -1213,6 +1213,7 @@ class CribisNuovaRicerca:
                         print("   ❌ Nessuna modale trovata!")
                         # Prova a cercare direttamente nella pagina
                         print("   🔍 Provo a cercare 'Company Card Completa' direttamente nella pagina...")
+                        modale = None  # Forza ricerca nella pagina principale
                     else:
                         # scroll in fondo
                         try:
@@ -1254,6 +1255,7 @@ class CribisNuovaRicerca:
                             print(f"   ⚠️  Errore ricerca card: {card_err}")
                             card_sel = None
                         
+                        # Se la card è stata trovata, cerca Richiedi risalendo dalla card
                         if card_sel and card_sel.count() > 0:
                             print("   🔎 STEP 3.3: Cerco bottone 'Richiedi' nella card...")
                             parent = card_sel
@@ -1309,13 +1311,90 @@ class CribisNuovaRicerca:
                                     break
                             
                             if not bottone_trovato:
-                                print("   ❌ Bottone 'Richiedi' non trovato dopo 8 tentativi!")
-                                # Screenshot finale
+                                print("   ⚠️  Bottone 'Richiedi' non trovato risalendo dalla card, provo ricerca diretta...")
+                                # Fallback: cerca "Richiedi" direttamente nella modale o pagina
                                 try:
-                                    self.page.screenshot(path=f"debug_richiedi_non_trovato_{codice_fiscale}.png", full_page=True)
-                                    print(f"   📸 Screenshot salvato: debug_richiedi_non_trovato_{codice_fiscale}.png")
-                                except Exception:
-                                    pass
+                                    search_area = modale if modale and modale.count() > 0 else self.page
+                                    selettori_diretti = [
+                                        'button:has-text("Richiedi")',
+                                        'a:has-text("Richiedi")',
+                                        'button:has-text("RICHIEDI")',
+                                        'a:has-text("RICHIEDI")',
+                                        '*[role="button"]:has-text("Richiedi")'
+                                    ]
+                                    for btn_sel_diretto in selettori_diretti:
+                                        try:
+                                            btns_diretti = search_area.locator(btn_sel_diretto).all()
+                                            if btns_diretti:
+                                                print(f"   ✅ Trovato bottone 'Richiedi' con ricerca diretta: {btn_sel_diretto}")
+                                                try:
+                                                    print("   🖱️  Click su 'Richiedi' (ricerca diretta, attendo nuova tab)...")
+                                                    with self.page.context.expect_page(timeout=180000) as popup_info:
+                                                        btns_diretti[0].click(force=True)
+                                                    print("   ✅ Nuova tab rilevata!")
+                                                    nuova_tab = popup_info.value
+                                                    self.page = nuova_tab
+                                                    print(f"   📍 URL nuova tab: {self.page.url}")
+                                                    self.page.wait_for_load_state("domcontentloaded")
+                                                    print("   ✅ Pagina caricata, sono sulla Company Card Completa!")
+                                                    bottone_trovato = True
+                                                    break
+                                                except Exception as e:
+                                                    print(f"   ⚠️  Errore click (ricerca diretta): {e}")
+                                                    continue
+                                        except Exception:
+                                            continue
+                                except Exception as e:
+                                    print(f"   ⚠️  Errore ricerca diretta: {e}")
+                                
+                                if not bottone_trovato:
+                                    print("   ❌ Bottone 'Richiedi' NON TROVATO dopo tutti i tentativi!")
+                                    # Screenshot finale
+                                    try:
+                                        self.page.screenshot(path=f"debug_richiedi_non_trovato_{codice_fiscale}.png", full_page=True)
+                                        print(f"   📸 Screenshot salvato: debug_richiedi_non_trovato_{codice_fiscale}.png")
+                                    except Exception:
+                                        pass
+                        else:
+                            # Card non trovata: cerca Richiedi direttamente nella modale/pagina
+                            print("   ⚠️  Card non trovata, provo ricerca diretta di 'Richiedi'...")
+                            bottone_trovato = False
+                            try:
+                                search_area = modale if modale and modale.count() > 0 else self.page
+                                selettori_diretti = [
+                                    'button:has-text("Richiedi")',
+                                    'a:has-text("Richiedi")',
+                                    'button:has-text("RICHIEDI")',
+                                    'a:has-text("RICHIEDI")',
+                                    '*[role="button"]:has-text("Richiedi")'
+                                ]
+                                for btn_sel_diretto in selettori_diretti:
+                                    try:
+                                        btns_diretti = search_area.locator(btn_sel_diretto).all()
+                                        if btns_diretti:
+                                            print(f"   ✅ Trovato bottone 'Richiedi' (senza card): {btn_sel_diretto}")
+                                            try:
+                                                print("   🖱️  Click su 'Richiedi' (senza card, attendo nuova tab)...")
+                                                with self.page.context.expect_page(timeout=180000) as popup_info:
+                                                    btns_diretti[0].click(force=True)
+                                                print("   ✅ Nuova tab rilevata!")
+                                                nuova_tab = popup_info.value
+                                                self.page = nuova_tab
+                                                print(f"   📍 URL nuova tab: {self.page.url}")
+                                                self.page.wait_for_load_state("domcontentloaded")
+                                                print("   ✅ Pagina caricata, sono sulla Company Card Completa!")
+                                                bottone_trovato = True
+                                                break
+                                            except Exception as e:
+                                                print(f"   ⚠️  Errore click (senza card): {e}")
+                                                continue
+                                    except Exception:
+                                        continue
+                                
+                                if not bottone_trovato:
+                                    print("   ❌ Bottone 'Richiedi' non trovato nemmeno con ricerca diretta!")
+                            except Exception as e:
+                                print(f"   ⚠️  Errore ricerca diretta (senza card): {e}")
                                         
                 except Exception as e:
                     print(f"   ❌ ERRORE nella selezione Company Card Completa: {e}")
