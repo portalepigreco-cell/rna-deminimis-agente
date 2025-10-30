@@ -2216,6 +2216,14 @@ class CribisNuovaRicerca:
             filename = f"CompanyCard_{codice_fiscale}_{data_str}.pdf"
             target_path = os.path.join(downloads_dir, filename)
 
+            # Se il file esiste già ed è >0, evita nuovi tentativi (idempotente)
+            try:
+                if os.path.exists(target_path) and os.path.getsize(target_path) > 0:
+                    self._pdf_downloaded_by_cf.add(codice_fiscale)
+                    return {"success": True, "path": target_path, "filename": filename, "reason": "gia_presente_su_disco"}
+            except Exception:
+                pass
+
             # Possibili selettori del link "Scarica" (header della Company Card)
             possibili_scarica = [
                 # Struttura precisa indicata: ul.list.operations > li:nth-child(2) > a[href*='/Storage/Pdf/']
@@ -2237,8 +2245,8 @@ class CribisNuovaRicerca:
             selettore_usato = None
             print(f"   🔎 Provo {len(possibili_scarica)} selettori per trovare link 'Scarica'...")
 
-            # Ricerca con backoff esponenziale fino a ~90s totali
-            backoff_steps = [5, 10, 20, 35, 20]  # somma 90s
+            # Ricerca con backoff più lungo (totale ~150s) per pagine lente
+            backoff_steps = [5, 10, 20, 35, 35, 45]
             for wait_s in backoff_steps:
                 # prova tutti i selettori ad ogni giro
                 for idx, sel in enumerate(possibili_scarica, 1):
@@ -2322,13 +2330,13 @@ class CribisNuovaRicerca:
                 pass
 
             # Attendi evento download e clicca (timeout alto per PDF grandi)
-            print("   🖱️  Click su link 'Scarica' (attendo evento download, timeout 2 minuti)...")
+            print("   🖱️  Click su link 'Scarica' (attendo evento download, timeout 3 minuti)...")
             # Ciclo retry su download + verifica dimensione file
             max_attempts = 3
             last_err = None
             for attempt in range(1, max_attempts + 1):
                 try:
-                    with self.page.expect_download(timeout=120000) as download_info:
+                    with self.page.expect_download(timeout=180000) as download_info:
                         link.click(force=True)
                     download = download_info.value
                     print("   ✅ Evento download ricevuto!")
@@ -2351,7 +2359,7 @@ class CribisNuovaRicerca:
                                 if href.startswith('/'):
                                     href = f"{self.base_url}{href}"
                                 print(f"   🌐 Download diretto via href: {href}")
-                                resp = self.page.context.request.get(href, timeout=120000)
+                                resp = self.page.context.request.get(href, timeout=180000)
                                 if resp.ok:
                                     with open(target_path, 'wb') as f:
                                         f.write(resp.body())
@@ -2374,7 +2382,7 @@ class CribisNuovaRicerca:
                             if href.startswith('/'):
                                 href = f"{self.base_url}{href}"
                             print(f"   🌐 Download diretto via href dopo eccezione: {href}")
-                            resp = self.page.context.request.get(href, timeout=120000)
+                            resp = self.page.context.request.get(href, timeout=180000)
                             if resp.ok:
                                 with open(target_path, 'wb') as f:
                                     f.write(resp.body())
@@ -2390,7 +2398,7 @@ class CribisNuovaRicerca:
                     last_err = click_err
 
                 # Backoff tra tentativi
-                wait_between = 5 * attempt
+                wait_between = 8 * attempt
                 print(f"   🔁 Retry tra {wait_between}s...")
                 time.sleep(wait_between)
 
@@ -2398,7 +2406,12 @@ class CribisNuovaRicerca:
             raise last_err or Exception("Download fallito")
 
         except PlaywrightTimeout:
-            print("   ❌ TIMEOUT: Download non completato entro 2 minuti")
+            # Se il file è già presente su disco, considera esito positivo idempotente
+            if os.path.exists(target_path) and os.path.getsize(target_path) > 0:
+                self._pdf_downloaded_by_cf.add(codice_fiscale)
+                print("   ⚠️ TIMEOUT ma file presente su disco: considero scaricato")
+                return {"success": True, "path": target_path, "filename": filename, "reason": "timeout_ma_presente"}
+            print("   ❌ TIMEOUT: Download non completato entro 3 minuti")
             return {
                 "success": False,
                 "reason": "Timeout download PDF",
