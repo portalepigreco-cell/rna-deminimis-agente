@@ -54,6 +54,8 @@ class CribisNuovaRicerca:
         self.playwright = None
         self.browser = None
         self.page = None
+        # Traccia PDF già scaricati per CF per evitare duplicati
+        self._pdf_downloaded_by_cf = set()
     
     def _screenshot(self, path: str, descrizione: str = ""):
         """
@@ -2197,6 +2199,10 @@ class CribisNuovaRicerca:
             dict: { success, path, filename, reason }
         """
         try:
+            # Evita doppio download per lo stesso CF nella stessa sessione
+            if codice_fiscale in self._pdf_downloaded_by_cf:
+                return {"success": True, "path": None, "filename": None, "reason": "già_scaricato"}
+
             print(f"⬇️  STEP 5: Tentativo download PDF per {codice_fiscale}...")
             print(f"   📍 URL pagina corrente: {self.page.url}")
             
@@ -2230,23 +2236,25 @@ class CribisNuovaRicerca:
             link = None
             selettore_usato = None
             print(f"   🔎 Provo {len(possibili_scarica)} selettori per trovare link 'Scarica'...")
-            
-            for idx, sel in enumerate(possibili_scarica, 1):
-                try:
-                    print(f"   🔄 Tentativo {idx}/{len(possibili_scarica)}: {sel[:60]}...")
-                    link = self.page.wait_for_selector(sel, timeout=4000)
-                    if link:
-                        is_vis = link.is_visible()
-                        print(f"      {'✅ Link trovato e visibile!' if is_vis else '⚠️  Link trovato ma non visibile'}")
-                        if is_vis:
+
+            # Ricerca con backoff esponenziale fino a ~90s totali
+            backoff_steps = [5, 10, 20, 35, 20]  # somma 90s
+            for wait_s in backoff_steps:
+                # prova tutti i selettori ad ogni giro
+                for idx, sel in enumerate(possibili_scarica, 1):
+                    try:
+                        print(f"   🔄 Tentativo {sel[:60]}...")
+                        link_candidate = self.page.wait_for_selector(sel, timeout=3000)
+                        if link_candidate and link_candidate.is_visible():
+                            link = link_candidate
                             selettore_usato = sel
                             break
-                        else:
-                            print(f"      ⚠️  Elemento non visibile, provo prossimo selettore...")
-                            link = None
-                except Exception as e:
-                    print(f"      ❌ Non trovato: {str(e)[:80]}")
-                    continue
+                    except Exception:
+                        pass
+                if link:
+                    break
+                print(f"   ⏳ Link 'Scarica' non ancora pronto, attendo {wait_s}s e riprovo...")
+                time.sleep(wait_s)
 
             if not link:
                 print("   ⚠️  Selettori principali falliti, ultimo tentativo con get_by_text...")
@@ -2315,33 +2323,39 @@ class CribisNuovaRicerca:
 
             # Attendi evento download e clicca (timeout alto per PDF grandi)
             print("   🖱️  Click su link 'Scarica' (attendo evento download, timeout 2 minuti)...")
-            try:
-                with self.page.expect_download(timeout=120000) as download_info:
-                    link.click(force=True)
-                download = download_info.value
-                print("   ✅ Evento download ricevuto!")
+            # Ciclo retry su download + verifica dimensione file
+            max_attempts = 3
+            last_err = None
+            for attempt in range(1, max_attempts + 1):
+                try:
+                    with self.page.expect_download(timeout=120000) as download_info:
+                        link.click(force=True)
+                    download = download_info.value
+                    print("   ✅ Evento download ricevuto!")
 
-                # Salva su percorso target
-                print(f"   💾 Salvo PDF in: {target_path}")
-                download.save_as(target_path)
-                
-                # Verifica che il file esista
-                if os.path.exists(target_path):
-                    file_size = os.path.getsize(target_path)
-                    print(f"   ✅ PDF salvato con successo! Dimensione: {file_size:,} bytes ({file_size/1024:.1f} KB)")
-                else:
-                    print(f"   ⚠️  File non trovato dopo save_as!")
+                    print(f"   💾 Salvo PDF in: {target_path}")
+                    download.save_as(target_path)
 
-                return {
-                    "success": True,
-                    "path": target_path,
-                    "filename": filename
-                }
-            except Exception as click_err:
-                print(f"   ❌ Errore durante click o download: {click_err}")
-                import traceback
-                traceback.print_exc()
-                raise
+                    # Verifica file > 0
+                    if os.path.exists(target_path) and os.path.getsize(target_path) > 0:
+                        file_size = os.path.getsize(target_path)
+                        print(f"   ✅ PDF salvato! Dimensione: {file_size:,} bytes")
+                        self._pdf_downloaded_by_cf.add(codice_fiscale)
+                        return {"success": True, "path": target_path, "filename": filename}
+                    else:
+                        print("   ⚠️  File vuoto o non presente dopo save_as")
+                        last_err = Exception("file_vuoto")
+                except Exception as click_err:
+                    print(f"   ❌ Errore durante click o download (tentativo {attempt}/{max_attempts}): {click_err}")
+                    last_err = click_err
+
+                # Backoff tra tentativi
+                wait_between = 5 * attempt
+                print(f"   🔁 Retry tra {wait_between}s...")
+                time.sleep(wait_between)
+
+            # Se arrivo qui, tutti i tentativi falliti
+            raise last_err or Exception("Download fallito")
 
         except PlaywrightTimeout:
             print("   ❌ TIMEOUT: Download non completato entro 2 minuti")
