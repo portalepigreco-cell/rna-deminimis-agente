@@ -288,10 +288,10 @@ def cribis_nuova_ricerca():
         print(f"🔍 Avvio Ricerca Collegate (flusso Dimensione) per P.IVA: {partita_iva}")
         try:
             import os
-            from dimensione_impresa_pmi import DimensionePMICalculator
+            from dimensione_impresa_pmi import CalcolatoreDimensionePMI
             # Headless su Render/produzione
             is_production = ('RENDER' in os.environ) or (os.environ.get('FLASK_ENV') == 'production')
-            calc = DimensionePMICalculator(headless=is_production)
+            calc = CalcolatoreDimensionePMI(headless=is_production)
             gruppo = calc._estrai_gruppo_societario(partita_iva)
             if gruppo.get('errore'):
                 return jsonify({"errore": gruppo['errore'], "partita_iva": partita_iva}), 500
