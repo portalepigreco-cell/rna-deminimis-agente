@@ -21,6 +21,13 @@ import time
 app = Flask(__name__)
 CORS(app)
 
+# Forza auto-reload dei template Jinja2 (evita cache su Render/prod)
+app.config['TEMPLATES_AUTO_RELOAD'] = True
+try:
+    app.jinja_env.auto_reload = True
+except Exception:
+    pass
+
 # Istanza globale del calcolatore PMI (per riutilizzare la sessione browser)
 calcolatore_pmi_globale = None
 # Lock per evitare richieste concorrenti (browser non è thread-safe)
