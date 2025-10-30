@@ -449,12 +449,37 @@ class CribisNuovaRicerca:
             self.page.screenshot(path="debug_cribis_nuova_05_primo_risultato.png")
             print("📸 Screenshot: debug_cribis_nuova_05_primo_risultato.png")
             
-            # Clicca sul nome
+            # Clicca sul nome (con fallback robusti)
             testo_nome = nome_link.inner_text()
             print(f"🖱️ Clic sul nome: '{testo_nome}'...")
-            nome_link.click()
+            try:
+                # Tentativo standard
+                nome_link.click(timeout=30000)
+            except Exception as click_err:
+                print(f"⚠️ Click standard fallito: {click_err}. Provo scroll+force...")
+                try:
+                    # Scroll e click forzato
+                    nome_link.scroll_into_view_if_needed()
+                    time.sleep(0.5)
+                    nome_link.click(force=True, timeout=15000)
+                except Exception as force_err:
+                    print(f"⚠️ Click force fallito: {force_err}. Provo via JS...")
+                    try:
+                        # Click via JavaScript
+                        self.page.evaluate("el => el.click()", nome_link)
+                    except Exception as js_err:
+                        print(f"⚠️ Click JS fallito: {js_err}. Provo navigando su href...")
+                        # Ultimo fallback: vai direttamente all'href del link
+                        href = nome_link.get_attribute('href')
+                        if not href:
+                            raise
+                        if href.startswith('/'):
+                            base = 'https://www2.cribisx.com'
+                            href = base + href
+                        print(f"➡️  Navigo direttamente su: {href}")
+                        self.page.goto(href, wait_until='domcontentloaded')
             
-            # Aspetta caricamento pagina dettaglio
+            # Attendi caricamento pagina dettaglio
             self.page.wait_for_load_state("domcontentloaded")
             time.sleep(3)
             
