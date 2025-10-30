@@ -2205,6 +2205,17 @@ class CribisNuovaRicerca:
 
             print(f"⬇️  STEP 5: Tentativo download PDF per {codice_fiscale}...")
             print(f"   📍 URL pagina corrente: {self.page.url}")
+
+            # Guardia: siamo ancora nella pagina di ricerca o in pagina errore?
+            current_url = (self.page.url or "").lower()
+            if "#/search/company/" in current_url or "/storage/documentunavailable" in current_url:
+                print("   ⚠️  Non siamo nella Company Card completa (pagina di ricerca o documento non disponibile).")
+                return {
+                    "success": False,
+                    "reason": "non_nella_company_card",
+                    "path": None,
+                    "filename": None
+                }
             
             # Assicura cartella downloads/
             downloads_dir = os.path.join(os.getcwd(), 'downloads')
