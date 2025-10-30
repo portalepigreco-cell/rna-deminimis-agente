@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RNA De Minimis</title>
+    <title>RNA De Minimis - dimensione del gruppo</title>
     <style>
         * {
             margin: 0;
@@ -357,18 +357,18 @@
 </head>
 <body>
     <div class="container">
-        <h1><img src="/static/img/ideogramma-bianco.png" alt="RNA De Minimis" style="width: 100px; margin-right: 10px;"> RNA De Minimis</h1>
+        <h1><img src="/static/img/ideogramma-bianco.png" alt="RNA De Minimis" style="width: 100px; margin-right: 10px;"> </h1>
         
         <div class="mode-selector">
-            <button class="mode-btn active" onclick="switchMode('auto')">De Minimis</button>
+            <button class="mode-btn active" onclick="switchMode('auto')">RNA</button>
             <!-- <button class="mode-btn" onclick="switchMode('manual')">Collegate (archivio)</button> -->
-            <button class="mode-btn" onclick="switchMode('cribis')">Ricerca controllate</button>
+            <button class="mode-btn" onclick="switchMode('cribis')">RNA - controllate</button>
             <button class="mode-btn" onclick="switchMode('pmi')">Dimensione</button>
         </div>
         
         <!-- Modalità Automatica -->
         <div id="auto-mode" class="mode-content active">
-            <label for="partite-iva-auto">Codici Fiscali (uno per riga):</label>
+            <label for="partite-iva-auto">Codici Fiscali (uno per riga):<br></label>
             <div style="display: flex; gap: 15px; align-items: stretch;">
                 <textarea 
                     id="partite-iva-auto" 
@@ -378,7 +378,7 @@
                 ></textarea>
                 
                 <button class="btn" onclick="calcolaAutomatico()" style="flex: 0 0 200px; height: auto; white-space: nowrap;">
-                    🔄 Calcola De Minimis
+                    🔄 Invio
                 </button>
             </div>
         </div>
@@ -429,7 +429,7 @@
                 <p style="margin-top: 5px; font-size: 0.9em;">✅ Estrae automaticamente tutte le società italiane controllate >50%</p>
             </div>
             
-            <label for="partita-iva-cribis">Partita IVA (singola):</label>
+            <label for="partita-iva-cribis">Partita IVA (singola):<br></label>
             <div style="display: flex; gap: 15px; align-items: stretch;">
                 <input 
                     type="text" 
@@ -440,7 +440,7 @@
                 >
                 
                 <button class="btn" onclick="avviaNuovaRicercaCribis()" style="flex: 0 0 200px; height: auto; background: linear-gradient(135deg, #ff6b6b, #ff8e53); white-space: nowrap;">
-                    📋 Ricerca in Cribis
+                    📋 Invio
                 </button>
             </div>
         </div>
@@ -466,7 +466,7 @@
                 >
                 
                 <button class="btn" onclick="avviaCalcoloPMI()" style="flex: 0 0 250px; height: auto; background: linear-gradient(135deg, #9b59b6, #c56cf0); white-space: nowrap;">
-                    📊 Calcola Dimensione
+                    📊 Invio
                 </button>
             </div>
         </div>
