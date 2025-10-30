@@ -2256,8 +2256,23 @@ class CribisNuovaRicerca:
             selettore_usato = None
             print(f"   🔎 Provo {len(possibili_scarica)} selettori per trovare link 'Scarica'...")
 
-            # Ricerca con backoff più lungo (totale ~150s) per pagine lente
-            backoff_steps = [5, 10, 20, 35, 35, 45]
+            # Ricerca con backoff configurabile: usa env CRIBIS_PDF_FIND_MAX_S (default 30s)
+            try:
+                max_find_s = int(os.environ.get("CRIBIS_PDF_FIND_MAX_S", "30"))
+            except Exception:
+                max_find_s = 30
+            # Distribuzione semplice dei tentativi: 5s, 5s, 10s, 10s,  
+            # poi finché non superiamo il massimo consentito
+            candidate_steps = [5, 5, 10, 10, 15, 20, 30]
+            backoff_steps = []
+            total = 0
+            for s in candidate_steps:
+                if total + s > max_find_s:
+                    break
+                backoff_steps.append(s)
+                total += s
+            if not backoff_steps:
+                backoff_steps = [5]  # fallback minimo
             for wait_s in backoff_steps:
                 # prova tutti i selettori ad ogni giro
                 for idx, sel in enumerate(possibili_scarica, 1):
@@ -2409,7 +2424,7 @@ class CribisNuovaRicerca:
                     last_err = click_err
 
                 # Backoff tra tentativi
-                wait_between = 8 * attempt
+                wait_between = max(4, min(12, 6 * attempt))
                 print(f"   🔁 Retry tra {wait_between}s...")
                 time.sleep(wait_between)
 
