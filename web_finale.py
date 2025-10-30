@@ -199,7 +199,7 @@ def calcola_deminimis():
                     })
             
             # 4. Calcola stato globale
-            soglia = 200000.0
+            soglia = 300000.0
             percentuale_gruppo = (totale_gruppo / soglia) * 100
             margine_gruppo = max(0, soglia - totale_gruppo)
             
@@ -242,7 +242,7 @@ def calcola_deminimis():
                     continue
                 
                 # Calcola percentuali
-                soglia = 200000.0
+                soglia = 300000.0
                 percentuale = (importo / soglia) * 100
                 margine = max(0, soglia - importo)
                 
@@ -427,7 +427,7 @@ def cribis_nuova_ricerca():
                 })
         
         # Calcola stato globale
-        soglia = 200000.0
+        soglia = 300000.0
         percentuale_gruppo = (totale_gruppo / soglia) * 100
         margine_gruppo = max(0, soglia - totale_gruppo)
         
