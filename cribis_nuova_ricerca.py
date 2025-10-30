@@ -2343,10 +2343,50 @@ class CribisNuovaRicerca:
                         self._pdf_downloaded_by_cf.add(codice_fiscale)
                         return {"success": True, "path": target_path, "filename": filename}
                     else:
-                        print("   ⚠️  File vuoto o non presente dopo save_as")
+                        print("   ⚠️  File vuoto o non presente dopo save_as - provo fallback diretto via href")
+                        # Fallback diretto via href
+                        try:
+                            href = link.get_attribute('href')
+                            if href:
+                                if href.startswith('/'):
+                                    href = f"{self.base_url}{href}"
+                                print(f"   🌐 Download diretto via href: {href}")
+                                resp = self.page.context.request.get(href, timeout=120000)
+                                if resp.ok:
+                                    with open(target_path, 'wb') as f:
+                                        f.write(resp.body())
+                                    if os.path.exists(target_path) and os.path.getsize(target_path) > 0:
+                                        file_size = os.path.getsize(target_path)
+                                        print(f"   ✅ PDF salvato via href! Dimensione: {file_size:,} bytes")
+                                        self._pdf_downloaded_by_cf.add(codice_fiscale)
+                                        return {"success": True, "path": target_path, "filename": filename}
+                                else:
+                                    print(f"   ❌ GET href fallita: status {resp.status}")
+                        except Exception as href_err:
+                            print(f"   ❌ Fallback href errore: {href_err}")
                         last_err = Exception("file_vuoto")
                 except Exception as click_err:
                     print(f"   ❌ Errore durante click o download (tentativo {attempt}/{max_attempts}): {click_err}")
+                    # Fallback diretto via href anche in caso di eccezione
+                    try:
+                        href = link.get_attribute('href')
+                        if href:
+                            if href.startswith('/'):
+                                href = f"{self.base_url}{href}"
+                            print(f"   🌐 Download diretto via href dopo eccezione: {href}")
+                            resp = self.page.context.request.get(href, timeout=120000)
+                            if resp.ok:
+                                with open(target_path, 'wb') as f:
+                                    f.write(resp.body())
+                                if os.path.exists(target_path) and os.path.getsize(target_path) > 0:
+                                    file_size = os.path.getsize(target_path)
+                                    print(f"   ✅ PDF salvato via href! Dimensione: {file_size:,} bytes")
+                                    self._pdf_downloaded_by_cf.add(codice_fiscale)
+                                    return {"success": True, "path": target_path, "filename": filename}
+                            else:
+                                print(f"   ❌ GET href fallita: status {resp.status}")
+                    except Exception as href_err:
+                        print(f"   ❌ Fallback href errore: {href_err}")
                     last_err = click_err
 
                 # Backoff tra tentativi
