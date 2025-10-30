@@ -363,6 +363,20 @@ def cribis_nuova_ricerca():
             if cf and cf not in societa_da_calcolare:
                 societa_da_calcolare.append(cf)
         
+        # Prima di avviare un'altra sessione Playwright (RNA), chiudi quella Cribis
+        try:
+            if 'calc' in locals() and getattr(calc, 'cribis', None) is not None:
+                try:
+                    calc.cribis.__exit__(None, None, None)
+                except Exception:
+                    pass
+                try:
+                    calc.browser_attivo = False
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
         # Calcola de minimis per ogni società (import lazy)
         try:
             from rna_deminimis_playwright import RNACalculator
