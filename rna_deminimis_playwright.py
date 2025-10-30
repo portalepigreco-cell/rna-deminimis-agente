@@ -295,8 +295,14 @@ class RNACalculator:
                                     else:
                                         raise Exception('Scarica CSV non trovato')
                                 download = dl_info.value
-                                content = download.content()
-                                text = content.decode('utf-8', errors='ignore')
+                                # Salva CSV su file temporaneo e leggi il contenuto (Download non ha .content())
+                                import tempfile
+                                import os as _os
+                                with tempfile.NamedTemporaryFile(delete=False, suffix='.csv') as _tmp_csv:
+                                    download.save_as(_tmp_csv.name)
+                                    with open(_tmp_csv.name, 'r', encoding='utf-8', errors='ignore') as _f:
+                                        text = _f.read()
+                                    _os.unlink(_tmp_csv.name)
                                 # Parse CSV italiano: cerca header Elemento Aiuto e Data Concessione
                                 reader = csv.reader(io.StringIO(text), delimiter=';')
                                 headers = next(reader, [])

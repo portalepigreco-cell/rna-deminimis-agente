@@ -32,6 +32,6 @@ ENV PYTHONUNBUFFERED=1
 # Comando di avvio
 # Usa gunicorn con 1 worker per compatibilità Playwright
 # Timeout 300s per operazioni lunghe (scraping RNA)
-CMD gunicorn --bind 0.0.0.0:$PORT --workers 1 --worker-class sync --timeout 300 --access-logfile - --error-logfile - wsgi:application
+CMD gunicorn --bind 0.0.0.0:$PORT --workers 1 --worker-class sync --timeout 600 --access-logfile - --error-logfile - wsgi:application
 
 
