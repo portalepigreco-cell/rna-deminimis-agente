@@ -292,6 +292,13 @@ def cribis_nuova_ricerca():
             # Headless su Render/produzione
             is_production = ('RENDER' in os.environ) or (os.environ.get('FLASK_ENV') == 'production')
             calc = CalcolatoreDimensionePMI(headless=is_production)
+            # Assicura login/sessione Cribis prima di chiamare il metodo interno
+            if not getattr(calc, 'browser_attivo', False) or calc.cribis is None:
+                from cribis_nuova_ricerca import CribisNuovaRicerca
+                calc.cribis = CribisNuovaRicerca(headless=is_production)
+                calc.cribis.__enter__()
+                calc.cribis.login()
+                calc.browser_attivo = True
             gruppo = calc._estrai_gruppo_completo(partita_iva)
             if gruppo.get('errore'):
                 return jsonify({"errore": gruppo['errore'], "partita_iva": partita_iva}), 500
