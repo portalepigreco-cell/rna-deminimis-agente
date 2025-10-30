@@ -340,18 +340,21 @@ class CalcolatoreDimensionePMI:
         # Se questo fallisce (Exception), viene propagata e blocca il processo
         dati = self.cribis.scarica_company_card_completa(codice_fiscale)
 
-        # Prova a scaricare anche il PDF dalla pagina corrente (link "Scarica")
-        # Questa parte può fallire senza bloccare (il PDF è opzionale)
-        try:
-            pdf_res = self.cribis.scarica_pdf_company_card_corrente(codice_fiscale)
-            if pdf_res.get("success"):
-                dati["pdf_filename"] = pdf_res.get("filename")
-            else:
-                # Mantieni l'informazione del perché non disponibile
-                dati["pdf_note"] = pdf_res.get("reason")
-        except Exception as e:
-            dati["pdf_note"] = f"Errore download PDF: {e}"
-            # Non bloccare per errori PDF, è opzionale
+        # PDF: disattivato di default per non bloccare il flusso "Dimensione".
+        # Abilitabile impostando CRIBIS_PDF_AUTO=1 (o true) nell'ambiente.
+        import os
+        auto_pdf = os.environ.get("CRIBIS_PDF_AUTO", "0").lower() in {"1", "true", "yes", "on"}
+        if auto_pdf:
+            try:
+                pdf_res = self.cribis.scarica_pdf_company_card_corrente(codice_fiscale)
+                if pdf_res.get("success"):
+                    dati["pdf_filename"] = pdf_res.get("filename")
+                else:
+                    dati["pdf_note"] = pdf_res.get("reason")
+            except Exception as e:
+                dati["pdf_note"] = f"Errore download PDF: {e}"
+        else:
+            dati["pdf_note"] = "pdf_auto_disabilitato"
         
         # Se c'è un errore nei dati (es. dati finanziari non trovati nella pagina),
         # restituisci comunque dati strutturati (non è critico)
