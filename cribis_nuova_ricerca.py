@@ -2068,8 +2068,31 @@ class CribisNuovaRicerca:
             # Estrai dati usando regex dalla pagina HTML
             dati_estratti = self._estrai_dati_finanziari_da_pagina(html_content, codice_fiscale)
 
-            # NOTA: Il download PDF viene gestito da _scarica_dati_finanziari in dimensione_impresa_pmi.py
-            # per evitare duplicazioni. Qui estraiamo solo i dati dalla pagina.
+            # FALLBACK AUTOMATICO: Se i dati dalla pagina sono assenti, prova a scaricare il PDF e leggere da lì
+            if dati_estratti.get("stato_dati") in ("assenti", "errore") or \
+               (dati_estratti.get("personale") is None and dati_estratti.get("fatturato") is None and dati_estratti.get("attivo") is None):
+                print("⚠️  Dati dalla pagina web assenti/incompleti → FALLBACK: scarico PDF e leggo da lì")
+                try:
+                    pdf_res = self.scarica_pdf_company_card_corrente(codice_fiscale)
+                    if pdf_res.get("success") and pdf_res.get("filename"):
+                        pdf_path = pdf_res.get("path") or os.path.join(os.getcwd(), "downloads", pdf_res.get("filename"))
+                        if os.path.exists(pdf_path):
+                            dati_pdf = self._estrai_dati_finanziari_da_pdf(pdf_path, codice_fiscale)
+                            # Unisci dati PDF a quelli web (PDF ha priorità solo per valori non None)
+                            if dati_pdf.get("personale") is not None:
+                                dati_estratti["personale"] = dati_pdf["personale"]
+                            if dati_pdf.get("fatturato") is not None:
+                                dati_estratti["fatturato"] = dati_pdf["fatturato"]
+                            if dati_pdf.get("attivo") is not None:
+                                dati_estratti["attivo"] = dati_pdf["attivo"]
+                            # Aggiorna stato
+                            if dati_estratti.get("personale") is not None or dati_estratti.get("fatturato") is not None or dati_estratti.get("attivo") is not None:
+                                dati_estratti["stato_dati"] = "parziali" if (dati_estratti.get("personale") is None or dati_estratti.get("fatturato") is None or dati_estratti.get("attivo") is None) else "completi"
+                            dati_estratti["fonte"] = "pdf_fallback"
+                            dati_estratti["pdf_filename"] = pdf_res.get("filename")
+                            print(f"✅ Dati dal PDF: personale={dati_estratti.get('personale')}, fatturato={dati_estratti.get('fatturato')}, attivo={dati_estratti.get('attivo')}")
+                except Exception as pdf_err:
+                    print(f"⚠️  Fallback PDF fallito (non critico): {pdf_err}")
             
             print(f"✅ Dati estratti: {dati_estratti}")
             
@@ -2340,6 +2363,93 @@ class CribisNuovaRicerca:
                 "anno_riferimento": "N/D",
                 "stato_dati": "errore",
                 "fonte": "pagina_web"
+            }
+
+    def _estrai_dati_finanziari_da_pdf(self, pdf_path: str, cf: str) -> dict:
+        """
+        Estrae dati finanziari dal PDF della Company Card.
+        
+        Args:
+            pdf_path (str): Percorso del file PDF
+            cf (str): Codice fiscale per debug
+            
+        Returns:
+            dict: Dati finanziari estratti dal PDF
+        """
+        try:
+            import pdfplumber
+            personale = None
+            fatturato = None
+            attivo = None
+            numero = r"([0-9][0-9\.\s]*?,?[0-9]{0,2})"
+            
+            with pdfplumber.open(pdf_path) as pdf:
+                text_full = ""
+                for page in pdf.pages:
+                    text_full += page.extract_text() or ""
+            
+            # Normalizza spazi
+            text_norm = text_full.replace('\u00A0', ' ').replace('\u202F', ' ').replace('\u2009', ' ')
+            
+            def parse_num(s: str) -> float:
+                cleaned = s.replace('.', '').replace(' ', '').replace(',', '.')
+                return float(cleaned)
+            
+            # Cerca DIPENDENTI
+            pat_dip = rf"DIPENDENTI[:\s]*{numero}"
+            m = re.search(pat_dip, text_norm, re.IGNORECASE)
+            if m:
+                try:
+                    personale = parse_num(m.group(1))
+                    print(f"   ✅ PDF: Personale trovato: {personale}")
+                except:
+                    pass
+            
+            # Cerca FATTURATO / RICAVI / VALORE PRODUZIONE (priorità)
+            for label in ["RICAVI DELLE VENDITE E DELLE PRESTAZIONI", "RICAVI", "VALORE DELLA PRODUZIONE", "FATTURATO"]:
+                pat = rf"{re.escape(label)}[:\s]*{numero}"
+                m = re.search(pat, text_norm, re.IGNORECASE)
+                if m:
+                    try:
+                        candidato = parse_num(m.group(1))
+                        if candidato >= 50000:  # Evita falsi positivi piccoli
+                            fatturato = candidato
+                            print(f"   ✅ PDF: Fatturato ({label}) trovato: {fatturato:,.2f}")
+                            break
+                    except:
+                        continue
+            
+            # Cerca TOTALE ATTIVITÀ
+            pat_att = rf"TOTALE\s+ATTIVIT[ÀA][:\s]*{numero}"
+            m = re.search(pat_att, text_norm, re.IGNORECASE)
+            if m:
+                try:
+                    attivo = parse_num(m.group(1))
+                    print(f"   ✅ PDF: Attivo trovato: {attivo:,.2f}")
+                except:
+                    pass
+            
+            stato = "completi" if all(v is not None for v in [personale, fatturato, attivo]) else ("parziali" if any(v is not None for v in [personale, fatturato, attivo]) else "assenti")
+            
+            return {
+                "cf": cf,
+                "personale": personale,
+                "fatturato": fatturato,
+                "attivo": attivo,
+                "anno_riferimento": "N/D",
+                "stato_dati": stato,
+                "fonte": "pdf"
+            }
+        except Exception as e:
+            print(f"   ❌ Errore lettura PDF: {e}")
+            return {
+                "cf": cf,
+                "personale": None,
+                "fatturato": None,
+                "attivo": None,
+                "anno_riferimento": "N/D",
+                "stato_dati": "errore",
+                "fonte": "pdf"
             }
 
     def scarica_pdf_company_card_corrente(self, codice_fiscale: str) -> dict:
