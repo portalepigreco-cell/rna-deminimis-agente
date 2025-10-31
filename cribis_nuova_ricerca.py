@@ -2105,11 +2105,18 @@ class CribisNuovaRicerca:
             # STEP 5: Estrai dati dalla pagina attuale (Company Card con tab Bilanci aperto)
             print("📊 STEP 5: Estrazione dati dalla pagina web...")
             
-            # Cerca sezione dati finanziari nella pagina
-            html_content = self.page.content()
+            # 5a) TENTATIVO 1: Estrazione DOM diretta con XPath (più robusto della sola regex)
+            try:
+                dati_estratti = self._estrai_dati_finanziari_da_dom(self.page, codice_fiscale)
+            except Exception as dom_err:
+                print(f"   ⚠️  Estrazione DOM non riuscita: {dom_err}")
+                dati_estratti = {"cf": codice_fiscale, "personale": None, "fatturato": None, "attivo": None, "stato_dati": "assenti", "fonte": "pagina_web"}
             
-            # Estrai dati usando regex dalla pagina HTML
-            dati_estratti = self._estrai_dati_finanziari_da_pagina(html_content, codice_fiscale)
+            # 5b) TENTATIVO 2: Se DOM non ha trovato nulla, fallback a regex su HTML
+            if (dati_estratti.get("personale") is None and dati_estratti.get("fatturato") is None and dati_estratti.get("attivo") is None):
+                print("   ⚠️  DOM non ha restituito valori → fallback regex su HTML")
+                html_content = self.page.content()
+                dati_estratti = self._estrai_dati_finanziari_da_pagina(html_content, codice_fiscale)
 
             # FALLBACK AUTOMATICO: Se i dati dalla pagina sono assenti, prova a scaricare il PDF e leggere da lì
             if dati_estratti.get("stato_dati") in ("assenti", "errore") or \
@@ -2494,6 +2501,58 @@ class CribisNuovaRicerca:
                 "stato_dati": "errore",
                 "fonte": "pdf"
             }
+
+    def _estrai_dati_finanziari_da_dom(self, page, cf: str) -> dict:
+        """Estrae i dati leggendo direttamente dal DOM con XPath (Company Card)."""
+        def norm_num(s: str):
+            if s is None:
+                return None
+            s = s.replace('\u00A0', ' ').replace('\u202F', ' ').replace('\u2009', ' ').strip()
+            s = s.replace('.', '').replace(' ', '').replace(',', '.')
+            try:
+                return float(s)
+            except:
+                return None
+        def first_text(xpath: str):
+            try:
+                el = page.locator(f"xpath={xpath}").first
+                if el and el.is_visible(timeout=2000):
+                    return (el.inner_text() or '').strip()
+            except Exception:
+                return None
+            return None
+
+        # Mappa etichette → xpath cella valore (prima colonna è label, poi colonne per anni)
+        x_attivo = "//table//td[normalize-space()='TOTALE ATTIVITÀ']/following-sibling::td[1]"
+        x_ricavi = "//table//td[normalize-space()='RICAVI' or contains(.,'RICAVI DELLE VENDITE')]/following-sibling::td[1]"
+        x_val_prod = "//table//td[normalize-space()='VALORE DELLA PRODUZIONE']/following-sibling::td[1]"
+        x_dip = "//table//td[normalize-space()='DIPENDENTI']/following-sibling::td[1]"
+
+        valore_att = norm_num(first_text(x_attivo))
+        valore_ric = norm_num(first_text(x_ricavi))
+        valore_val_prod = norm_num(first_text(x_val_prod))
+        valore_dip = norm_num(first_text(x_dip))
+
+        # Priorità fatturato: Ricavi>Valore Produzione; scarta importi troppo piccoli
+        fatturato = None
+        for v in [valore_ric, valore_val_prod]:
+            if v is not None and v >= 50000:
+                fatturato = v
+                break
+
+        personale = valore_dip if valore_dip is not None else None
+        attivo = valore_att
+
+        stato = "completi" if all(x is not None for x in [personale, fatturato, attivo]) else ("parziali" if any(x is not None for x in [personale, fatturato, attivo]) else "assenti")
+        return {
+            "cf": cf,
+            "personale": personale,
+            "fatturato": fatturato,
+            "attivo": attivo,
+            "anno_riferimento": "N/D",
+            "stato_dati": stato,
+            "fonte": "pagina_web_dom"
+        }
 
     def scarica_pdf_company_card_corrente(self, codice_fiscale: str) -> dict:
         """
