@@ -2140,6 +2140,10 @@ class CribisNuovaRicerca:
                 cleaned = s.replace('.', '').replace(' ', '').replace('\u00A0', '').replace('\u202F', '').replace('\u2009', '')
                 cleaned = cleaned.replace(',', '.')
                 return float(cleaned)
+            # Helper per label con tag HTML in mezzo (es. "VALORE <b>DELLA</b> PRODUZIONE")
+            def label_pat(label: str) -> str:
+                parts = re.split(r"\s+", label.strip())
+                return r"\s+".join([re.escape(p) for p in parts[:-1]] + [re.escape(parts[-1])]).replace(r"\s+", r"\s+(?:<[^>]+>\s*)*")
             # Cerca pattern comuni per dati finanziari
             personale = None
             fatturato = None
@@ -2168,8 +2172,16 @@ class CribisNuovaRicerca:
                         continue
             
             # Pattern per fatturato
-            # NOTE: evitiamo pattern generici "qualsiasi importo in €" che possono catturare capitale sociale (es. 10.000 €)
+            # NOTE: evitiamo pattern generici in € che catturano capitale sociale. Copriamo tabelle <td> e label con tag.
+            lp_fatt = label_pat("FATTURATO")
+            lp_ricavi = label_pat("RICAVI")
+            lp_val_prod = label_pat("VALORE DELLA PRODUZIONE")
+            lp_ricavi_prest = label_pat("RICAVI DELLE VENDITE E DELLE PRESTAZIONI")
             fatturato_patterns = [
+                rf'{lp_fatt}[^<]*?<td[^>]*>\s*{numero}',
+                rf'{lp_ricavi}[^<]*?<td[^>]*>\s*{numero}',
+                rf'{lp_val_prod}[^<]*?<td[^>]*>\s*{numero}',
+                rf'{lp_ricavi_prest}[^<]*?<td[^>]*>\s*{numero}',
                 rf'fatturato[:\s]*{numero}',
                 rf'ricavi[:\s]*{numero}',
                 rf'valore\s+della\s+produzione[:\s]*{numero}',
@@ -2194,7 +2206,7 @@ class CribisNuovaRicerca:
             # Priorità a "TOTALE ATTIVITÀ" esatto (come nella tabella), poi fallback generico
             attivo_patterns = [
                 rf'TOTALE\s+ATTIVIT[ÀA][^>]*?>\s*{numero}',
-                rf'TOTALE\s+ATTIVIT[ÀA][^<]*?<td[^>]*>{numero}',
+                rf'TOTALE\s+ATTIVIT[ÀA][^<]*?<td[^>]*>\s*{numero}',
                 rf'TOTALE\s+ATTIVIT[ÀA][\s\S]{{0,200}}?{numero}\s*(?:</td>|</div>|2024)',
                 rf'attivo[:\s]*{numero}',
                 rf'totale\s*attivo[:\s]*{numero}',
@@ -2213,6 +2225,7 @@ class CribisNuovaRicerca:
             
             # Raccogli anche valori grezzi aggiuntivi per debug/validazione
             raw_vals = {}
+            raw_text = {}
             def estrai_con_varianti(nome_chiave: str, varianti_labels: list):
                 nonlocal raw_vals
                 for v in varianti_labels:
@@ -2224,6 +2237,18 @@ class CribisNuovaRicerca:
                             return
                         except Exception:
                             continue
+            def estrai_testo(nome_chiave: str, varianti_labels: list):
+                """Estrae testo alfanumerico dopo una label (tollerando tag HTML)."""
+                nonlocal raw_text
+                for v in varianti_labels:
+                    pat = rf"{label_pat(v)}\s*[:\-]?\s*(?:</?[^>]+>\s*)*([^<\n\r]+)"
+                    m = re.search(pat, html_norm, re.IGNORECASE)
+                    if m:
+                        value = m.group(1).strip()
+                        # pulizia minima
+                        value = re.sub(r"\s+", " ", value)
+                        raw_text[nome_chiave] = value
+                        return
             # Sezione sintesi bilancio e legali (subset utile)
             estrai_con_varianti("ricavi", ["ricavi", "ricavi delle vendite e delle prestazioni", "ricavi vendite"]) 
             estrai_con_varianti("valore_produzione", ["valore della produzione", "valore produzione"]) 
@@ -2235,6 +2260,34 @@ class CribisNuovaRicerca:
             estrai_con_varianti("capitale_sociale_deliberato", ["capitale sociale deliberato"]) 
             estrai_con_varianti("capitale_sociale_sottoscritto", ["capitale sociale sottoscritto"]) 
             estrai_con_varianti("capitale_sociale_versato", ["capitale sociale versato"]) 
+
+            # Dati legali / impresa (testuali)
+            estrai_testo("codice_fiscale", ["codice fiscale"]) 
+            estrai_testo("partita_iva", ["partita iva"]) 
+            estrai_testo("cciaa_rea", ["cciaa / rea", "cciaa", "rea"]) 
+            estrai_testo("data_costituzione", ["data costituzione"]) 
+            estrai_testo("data_inizio_attivita", ["data inizio attività", "data inizio attivita"]) 
+            estrai_testo("natura_giuridica", ["natura giuridica"]) 
+            estrai_testo("stato_attivita", ["stato attività", "stato attivita"]) 
+            estrai_testo("sede_legale", ["sede legale"]) 
+            estrai_testo("pec", ["email certificata (pec)", "pec"]) 
+            estrai_testo("forma_amministrativa", ["forma amministrativa"]) 
+            estrai_con_varianti("numero_amministratori", ["numero amministratori in carica"]) 
+
+            # Dipendenti e UL
+            estrai_con_varianti("addetti_attuali", ["addetti attuali"]) 
+            estrai_con_varianti("anno_rilevazione_addetti", ["anno rilevazione"]) 
+            estrai_con_varianti("valore_medio_addetti", ["valore medio addetti"]) 
+
+            # Bilancio multi-anno (principali voci)
+            estrai_con_varianti("totale_passivita", ["totale passività", "totale passivita"]) 
+            estrai_con_varianti("debiti_banche", ["debiti verso banche"]) 
+            estrai_con_varianti("debiti_fornitori", ["debiti verso fornitori"]) 
+            estrai_con_varianti("ebitda", ["margine operativo lordo", "ebitda"]) 
+            estrai_con_varianti("ebit", ["ebit", "risultato operativo"]) 
+            estrai_con_varianti("oneri_finanziari", ["oneri finanziari"]) 
+            estrai_con_varianti("proventi_finanziari", ["proventi finanziari"]) 
+            estrai_con_varianti("utile_ante_imposte", ["utile ante imposte"]) 
 
             # Determina stato dati
             if personale is not None and fatturato is not None and attivo is not None:
@@ -2252,7 +2305,8 @@ class CribisNuovaRicerca:
                 "anno_riferimento": "N/D",
                 "stato_dati": stato_dati,
                 "fonte": "pagina_web",
-                "valori_grezzi": raw_vals
+                "valori_grezzi": raw_vals,
+                "valori_grezzi_testo": raw_text
             }
 
             # Dump di debug automatico se dati non completi o DEBUG abilitato
