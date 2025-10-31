@@ -2059,8 +2059,51 @@ class CribisNuovaRicerca:
             else:
                 print(f"   ✅ VERIFICATO: Siamo sulla Company Card Completa (URL contiene '/Storage/Document/')")
 
-            # STEP 4: Estrai dati dalla pagina attuale (Company Card se aperta, altrimenti dettaglio)
-            print("📊 STEP 4: Estrazione dati dalla pagina web...")
+            # STEP 4: Apri tab "Bilanci" se presente (i dati finanziari sono spesso lì)
+            print("📊 STEP 4: Apertura tab 'Bilanci' (se presente)...")
+            try:
+                # Cerca tab "Bilanci" usando get_by_text (Playwright) e CSS selectors
+                tab_trovato = False
+                # Metodo 1: Playwright locator get_by_text
+                try:
+                    tab_loc = self.page.get_by_text("Bilanci", exact=False).first
+                    if tab_loc and tab_loc.is_visible(timeout=3000):
+                        tab_loc.click()
+                        print("   ✅ Tab 'Bilanci' aperto (via get_by_text)")
+                        tab_trovato = True
+                        time.sleep(2)  # Attendi caricamento JS
+                except:
+                    pass
+                
+                # Metodo 2: CSS selectors fallback
+                if not tab_trovato:
+                    tab_selettori = [
+                        '[data-tab="bilanci"]',
+                        '[data-tab="Bilanci"]',
+                        '.tab[data-tab*="bilanci" i]',
+                        '*[class*="bilanci" i][role="tab"]',
+                        'button[class*="bilanci" i]',
+                        'a[class*="bilanci" i]',
+                    ]
+                    for sel in tab_selettori:
+                        try:
+                            tab_btn = self.page.wait_for_selector(sel, timeout=2000)
+                            if tab_btn and tab_btn.is_visible():
+                                tab_btn.click()
+                                print(f"   ✅ Tab 'Bilanci' aperto (selettore CSS: {sel[:50]})")
+                                tab_trovato = True
+                                time.sleep(2)  # Attendi caricamento JS
+                                break
+                        except:
+                            continue
+                
+                if not tab_trovato:
+                    print("   ⚠️  Tab 'Bilanci' non trovato (forse dati già visibili o struttura diversa)")
+            except Exception as tab_err:
+                print(f"   ⚠️  Errore apertura tab Bilanci (non critico): {tab_err}")
+            
+            # STEP 5: Estrai dati dalla pagina attuale (Company Card con tab Bilanci aperto)
+            print("📊 STEP 5: Estrazione dati dalla pagina web...")
             
             # Cerca sezione dati finanziari nella pagina
             html_content = self.page.content()
