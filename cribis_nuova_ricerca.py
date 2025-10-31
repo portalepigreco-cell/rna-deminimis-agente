@@ -2168,19 +2168,27 @@ class CribisNuovaRicerca:
                         continue
             
             # Pattern per fatturato
+            # NOTE: evitiamo pattern generici "qualsiasi importo in €" che possono catturare capitale sociale (es. 10.000 €)
             fatturato_patterns = [
                 rf'fatturato[:\s]*{numero}',
                 rf'ricavi[:\s]*{numero}',
+                rf'valore\s+della\s+produzione[:\s]*{numero}',
                 rf'valore\s+produzione[:\s]*{numero}',
-                rf'ricavi\s+vendite[:\s]*{numero}',
-                rf'{numero}\s*(?:€|euro)'
+                rf'ricavi\s+delle\s+vendite\s+e\s+delle\s+prestazioni[:\s]*{numero}',
+                rf'ricavi\s+vendite[:\s]*{numero}'
             ]
             
             for pattern in fatturato_patterns:
                 match = re.search(pattern, html_norm, re.IGNORECASE)
                 if match:
-                    fatturato = parse_num(match.group(1))
-                    break
+                    candidato = parse_num(match.group(1))
+                    # Heuristica: il fatturato plausibile è in genere > 50.000 € per società attive;
+                    # se < 50k manteniamo ma proviamo ancora altri pattern per cercare un valore più credibile.
+                    if candidato >= 50000:
+                        fatturato = candidato
+                        break
+                    else:
+                        fatturato = candidato  # tieni come fallback, ma non interrompere: cerca un valore migliore
             
             # Pattern per attivo: cerca "TOTALE ATTIVITÀ" nella tabella sintesi bilancio
             # Priorità a "TOTALE ATTIVITÀ" esatto (come nella tabella), poi fallback generico
