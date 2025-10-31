@@ -2128,6 +2128,18 @@ class CribisNuovaRicerca:
             dict: Dati finanziari estratti
         """
         try:
+            # Normalizza spazi non standard e separatori (nbsp, thin space)
+            html_norm = (html_content
+                .replace('\u00A0', ' ')
+                .replace('&nbsp;', ' ')
+                .replace('\u202F', ' ')
+                .replace('\u2009', ' ')
+            )
+            # Helper per normalizzare numeri: rimuove separatori migliaia (., spazio) e converte virgola in punto
+            def parse_num(s: str) -> float:
+                cleaned = s.replace('.', '').replace(' ', '').replace('\u00A0', '').replace('\u202F', '').replace('\u2009', '')
+                cleaned = cleaned.replace(',', '.')
+                return float(cleaned)
             # Cerca pattern comuni per dati finanziari
             personale = None
             fatturato = None
@@ -2135,20 +2147,21 @@ class CribisNuovaRicerca:
             
             # Pattern per personale: cerca "DIPENDENTI" nella tabella sintesi bilancio
             # Priorità a "DIPENDENTI" esatto (come nella tabella), poi fallback generico
+            numero = r"([0-9][0-9\.\s\u00A0\u202F\u2009]*?,?[0-9]{0,2})"
             personale_patterns = [
-                r'DIPENDENTI[^>]*?>\s*(\d+(?:\.\d+)?)',  # DIPENDENTI seguito da valore nella stessa riga/colonna
-                r'DIPENDENTI[^<]*?<td[^>]*>(\d+(?:\.\d+)?)',  # DIPENDENTI in tabella HTML
-                r'DIPENDENTI[\s\S]{0,200}?(\d+(?:\.\d+)?)\s*(?:</td>|</div>|2024)',  # DIPENDENTI con valore nella colonna 2024
-                r'(\d+(?:\.\d+)?)\s*(?:ULA|dipendenti|personale)',  # Fallback generico
-                r'personale[:\s]*(\d+(?:\.\d+)?)',  # Fallback generico
-                r'dipendenti[:\s]*(\d+(?:\.\d+)?)'  # Fallback generico
+                rf'DIPENDENTI[^>]*?>\s*{numero}',
+                rf'DIPENDENTI[^<]*?<td[^>]*>{numero}',
+                rf'DIPENDENTI[\s\S]{{0,200}}?{numero}\s*(?:</td>|</div>|2024)',
+                rf'{numero}\s*(?:ULA|dipendenti|personale)',
+                rf'personale[:\s]*{numero}',
+                rf'dipendenti[:\s]*{numero}'
             ]
             
             for pattern in personale_patterns:
-                match = re.search(pattern, html_content, re.IGNORECASE)
+                match = re.search(pattern, html_norm, re.IGNORECASE)
                 if match:
                     try:
-                        personale = float(match.group(1).replace('.', '').replace(',', '.'))
+                        personale = parse_num(match.group(1))
                         print(f"   ✅ Personale (DIPENDENTI) trovato: {personale}")
                         break
                     except ValueError:
@@ -2156,35 +2169,35 @@ class CribisNuovaRicerca:
             
             # Pattern per fatturato
             fatturato_patterns = [
-                r'fatturato[:\s]*(\d+(?:\.\d+){0,2}(?:,\d+)?)',
-                r'ricavi[:\s]*(\d+(?:\.\d+){0,2}(?:,\d+)?)',
-                r'(\d+(?:\.\d+){0,2}(?:,\d+)?)\s*(?:€|euro)'
+                rf'fatturato[:\s]*{numero}',
+                rf'ricavi[:\s]*{numero}',
+                rf'valore\s+produzione[:\s]*{numero}',
+                rf'ricavi\s+vendite[:\s]*{numero}',
+                rf'{numero}\s*(?:€|euro)'
             ]
             
             for pattern in fatturato_patterns:
-                match = re.search(pattern, html_content, re.IGNORECASE)
+                match = re.search(pattern, html_norm, re.IGNORECASE)
                 if match:
-                    valore_str = match.group(1).replace('.', '').replace(',', '.')
-                    fatturato = float(valore_str)
+                    fatturato = parse_num(match.group(1))
                     break
             
             # Pattern per attivo: cerca "TOTALE ATTIVITÀ" nella tabella sintesi bilancio
             # Priorità a "TOTALE ATTIVITÀ" esatto (come nella tabella), poi fallback generico
             attivo_patterns = [
-                r'TOTALE\s+ATTIVIT[ÀA][^>]*?>\s*(\d+(?:\.\d+){0,2}(?:,\d+)?)',  # TOTALE ATTIVITÀ seguito da valore
-                r'TOTALE\s+ATTIVIT[ÀA][^<]*?<td[^>]*>(\d+(?:\.\d+){0,2}(?:,\d+)?)',  # TOTALE ATTIVITÀ in tabella HTML
-                r'TOTALE\s+ATTIVIT[ÀA][\s\S]{0,200}?(\d+(?:\.\d+){0,2}(?:,\d+)?)\s*(?:</td>|</div>|2024)',  # TOTALE ATTIVITÀ con valore colonna 2024
-                r'attivo[:\s]*(\d+(?:\.\d+){0,2}(?:,\d+)?)',  # Fallback generico
-                r'totale\s*attivo[:\s]*(\d+(?:\.\d+){0,2}(?:,\d+)?)',  # Fallback generico
-                r'bilancio[:\s]*(\d+(?:\.\d+){0,2}(?:,\d+)?)'  # Fallback generico
+                rf'TOTALE\s+ATTIVIT[ÀA][^>]*?>\s*{numero}',
+                rf'TOTALE\s+ATTIVIT[ÀA][^<]*?<td[^>]*>{numero}',
+                rf'TOTALE\s+ATTIVIT[ÀA][\s\S]{{0,200}}?{numero}\s*(?:</td>|</div>|2024)',
+                rf'attivo[:\s]*{numero}',
+                rf'totale\s*attivo[:\s]*{numero}',
+                rf'bilancio[:\s]*{numero}'
             ]
             
             for pattern in attivo_patterns:
-                match = re.search(pattern, html_content, re.IGNORECASE)
+                match = re.search(pattern, html_norm, re.IGNORECASE)
                 if match:
                     try:
-                        valore_str = match.group(1).replace('.', '').replace(',', '.')
-                        attivo = float(valore_str)
+                        attivo = parse_num(match.group(1))
                         print(f"   ✅ Attivo (TOTALE ATTIVITÀ) trovato: {attivo:,.2f}")
                         break
                     except ValueError:
