@@ -2211,7 +2211,7 @@ class CribisNuovaRicerca:
             else:
                 stato_dati = "assenti"
             
-            return {
+            risultato = {
                 "cf": cf,
                 "personale": personale,
                 "fatturato": fatturato,
@@ -2220,6 +2220,27 @@ class CribisNuovaRicerca:
                 "stato_dati": stato_dati,
                 "fonte": "pagina_web"
             }
+
+            # Dump di debug automatico se dati non completi o DEBUG abilitato
+            try:
+                import os, json
+                debug_on = os.environ.get("CRIBIS_DEBUG", "0").lower() in {"1", "true", "yes", "on"}
+                if debug_on or stato_dati != "completi":
+                    from datetime import datetime
+                    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    base = os.path.join(os.getcwd(), "downloads", "debug")
+                    os.makedirs(base, exist_ok=True)
+                    html_path = os.path.join(base, f"{cf}_{ts}.html")
+                    json_path = os.path.join(base, f"{cf}_{ts}.json")
+                    with open(html_path, "w", encoding="utf-8") as f:
+                        f.write(html_content)
+                    with open(json_path, "w", encoding="utf-8") as f:
+                        json.dump(risultato, f, ensure_ascii=False, indent=2)
+                    print(f"   🧪 DEBUG salvato: {html_path} | {json_path}")
+            except Exception as _:
+                pass
+
+            return risultato
             
         except Exception as e:
             print(f"❌ Errore parsing HTML: {e}")
