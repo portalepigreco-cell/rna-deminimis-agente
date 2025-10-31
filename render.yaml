@@ -26,6 +26,10 @@ services:
         value: production
       - key: FLASK_DEBUG
         value: "False"
+      - key: PMI_EXCEL_MODE_ND_ZERO
+        value: "1"
+      - key: CRIBIS_DEBUG
+        value: "1"
       # NOTA: Con Docker, Playwright trova automaticamente i browser
       # Non servono configurazioni custom di path
     
