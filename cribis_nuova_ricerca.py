@@ -350,8 +350,45 @@ class CribisNuovaRicerca:
                     campo_ricerca = self.page.query_selector('header input[type="text"]')
                 except Exception:
                     campo_ricerca = None
-                if not campo_ricerca:
-                    return False
+            
+            # Fallback 2: ARIA role textbox con nome contenente 'cerca/ricerca/partita'
+            if not campo_ricerca:
+                try:
+                    locator = self.page.get_by_role("textbox", name=re.compile("cerca|ricerca|partita", re.I))
+                    campo_ricerca = locator.first.element_handle(timeout=3000)
+                    if campo_ricerca:
+                        print("✅ Campo ricerca trovato via role=textbox (nome contiene cerca/ricerca/partita)")
+                except Exception:
+                    campo_ricerca = None
+
+            # Fallback 3: Scansione di tutti gli input di testo/search visibili (priorità header/nav)
+            if not campo_ricerca:
+                try:
+                    handle = self.page.evaluate_handle(
+                        "() => {\n"
+                        "  function visibile(el){ const r=el.getBoundingClientRect(); const style=getComputedStyle(el); return r.width>150 && r.height>20 && style.visibility!=='hidden' && style.display!=='none'; }\n"
+                        "  const candidati = Array.from(document.querySelectorAll('input[type=\\'search\\'], input[type=\\'text\\']'))\n"
+                        "    .filter(el => !el.disabled && !el.readOnly && visibile(el));\n"
+                        "  const scored = candidati.map(el => {\n"
+                        "    const ph=(el.getAttribute('placeholder')||'').toLowerCase();\n"
+                        "    const ttl=(el.getAttribute('title')||'').toLowerCase();\n"
+                        "    const inHeader = !!el.closest('header, nav');\n"
+                        "    const match = (ph.includes('cerca')||ph.includes('ricerca')||ph.includes('partita')||ttl.includes('cerca')||ttl.includes('partita'));\n"
+                        "    let score = (inHeader?5:0) + (match?3:0) + (el.type==='search'?2:0);\n"
+                        "    return {el, score};\n"
+                        "  }).sort((a,b)=>b.score-a.score);\n"
+                        "  return scored.length? scored[0].el : null;\n"
+                        "}"
+                    )
+                    if handle:
+                        campo_ricerca = handle.as_element()
+                        if campo_ricerca:
+                            print("✅ Campo ricerca trovato via scansione input visibili")
+                except Exception:
+                    campo_ricerca = None
+
+            if not campo_ricerca:
+                return False
             
             # Inserisci P.IVA
             print(f"📝 Inserimento P.IVA: {partita_iva}")

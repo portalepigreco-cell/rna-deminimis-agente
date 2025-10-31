@@ -1536,6 +1536,22 @@
                 html += `</ul></div>`;
             }
             
+            // Tabella grp in Markdown + pulsante copia
+            if (data.grp_markdown) {
+                html += `
+                    <div style="background: #2a2a2a; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+                        <div style="display:flex; justify-content: space-between; align-items: center; gap:10px; margin-bottom:10px;">
+                            <h3 style="color: #9b59b6; margin: 0;">🗒️ Tabella grp (Markdown)</h3>
+                            <button onclick="copiaGrpMarkdown(data.grp_markdown)" 
+                                style="padding: 8px 16px; background: #9b59b6; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                                📋 Copia Markdown
+                            </button>
+                        </div>
+                        <pre style="background:#1a1a1a; padding:12px; border-radius:8px; overflow:auto; white-space: pre-wrap;">${data.grp_markdown.replace(/</g, '&lt;')}</pre>
+                    </div>
+                `;
+            }
+
             // Footer con tempo
             html += `
                 <div style="text-align: center; margin-top: 20px; padding: 15px; background: #1a1a1a; border-radius: 8px;">
@@ -1547,6 +1563,14 @@
             `;
             
             resultsDiv.innerHTML = html;
+        }
+
+        function copiaGrpMarkdown(content) {
+            navigator.clipboard.writeText(content).then(() => {
+                alert('✅ Tabella grp copiata in formato Markdown!');
+            }).catch(err => {
+                alert('❌ Errore nella copia: ' + err);
+            });
         }
         
         function mostraErrorePMI(messaggio, partitaIva) {

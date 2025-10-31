@@ -15,6 +15,8 @@ from datetime import datetime
 import re
 import time
 from typing import Dict, List, Optional
+import os
+import csv
 from cribis_nuova_ricerca import CribisNuovaRicerca
 
 
@@ -174,6 +176,15 @@ class CalcolatoreDimensionePMI:
             )
             risultato["aggregati_ue"] = aggregati
             
+            # Costruisci ed esporta tabella grp (per Excel)
+            grp_rows = self._costruisci_tabella_grp(
+                risultato["impresa_principale"],
+                risultato["societa_collegate"],
+                risultato["societa_partner"]
+            )
+            risultato["grp_rows"] = grp_rows
+            risultato["grp_markdown"] = self._grp_to_markdown(grp_rows)
+            
             # STEP 4: Classifica impresa
             print(f"\n4️⃣ CLASSIFICAZIONE IMPRESA")
             print("-" * 70)
@@ -216,6 +227,94 @@ class CalcolatoreDimensionePMI:
             # NON chiudere il browser (riutilizzo sessione tra richieste)
             # Il browser verrà chiuso solo chiamando esplicitamente close()
             pass
+
+    def _costruisci_tabella_grp(self, principale: Dict, collegate: List[Dict], partner: List[Dict]) -> List[Dict]:
+        """Crea la tabella grp: tipo, quota (decimale), ULA, fatturato, attivo.
+        - Principale e Collegate: quota=1.0
+        - Partner: quota = percentuale/100
+        - N/D convertiti a 0 (modalità Excel)
+        """
+        # Modalità Excel: N/D=0
+        excel_mode = os.environ.get("PMI_EXCEL_MODE_ND_ZERO", "1").lower() in {"1", "true", "yes", "on"}
+        def val(v):
+            return 0 if (excel_mode and v is None) else (v or 0 if excel_mode else v)
+
+        rows: List[Dict] = []
+        # Principale
+        rows.append({
+            "tipo": "Principale",
+            "quota": 1.0,
+            "ULA": val(principale.get("personale")),
+            "fatturato": val(principale.get("fatturato")),
+            "attivo": val(principale.get("attivo"))
+        })
+        # Collegate (100%)
+        for s in collegate:
+            rows.append({
+                "tipo": "Collegata",
+                "quota": 1.0,
+                "ULA": val(s.get("personale")),
+                "fatturato": val(s.get("fatturato")),
+                "attivo": val(s.get("attivo"))
+            })
+        # Partner (pro-quota)
+        for s in partner:
+            quota = (s.get("percentuale", 0) or 0) / 100.0
+            rows.append({
+                "tipo": "Partner",
+                "quota": quota,
+                "ULA": val(s.get("personale")),
+                "fatturato": val(s.get("fatturato")),
+                "attivo": val(s.get("attivo"))
+            })
+        return rows
+
+    def _salva_grp_csv(self, rows: List[Dict], partita_iva: str) -> str:
+        """Salva la tabella grp in CSV e restituisce il path."""
+        downloads_dir = os.path.join(os.getcwd(), "downloads")
+        os.makedirs(downloads_dir, exist_ok=True)
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"grp_{partita_iva}_{ts}.csv"
+        filepath = os.path.join(downloads_dir, filename)
+        fieldnames = ["tipo", "quota", "ULA", "fatturato", "attivo"]
+        with open(filepath, mode="w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            for r in rows:
+                writer.writerow(r)
+        print(f"   💾 Tabella grp esportata: {filepath}")
+        return filepath
+
+    def _grp_to_markdown(self, rows: List[Dict]) -> str:
+        """Rende la tabella grp in formato Markdown (allineata per Excel/Docs)."""
+        headers = ["tipo", "quota", "ULA", "fatturato", "attivo"]
+        md_lines = [
+            "| " + " | ".join(headers) + " |",
+            "| " + " | ".join(["---"] * len(headers)) + " |",
+        ]
+        def fmt_number(v):
+            if v is None:
+                return "0"
+            try:
+                # Evita notazione scientifica e usa punto come decimale (compatibile copia/incolla)
+                if isinstance(v, float) and v.is_integer():
+                    return str(int(v))
+                return ("%g" % v)
+            except Exception:
+                return str(v)
+        for r in rows:
+            md_lines.append(
+                "| "
+                + " | ".join([
+                    str(r.get("tipo", "")),
+                    fmt_number(r.get("quota")),
+                    fmt_number(r.get("ULA")),
+                    fmt_number(r.get("fatturato")),
+                    fmt_number(r.get("attivo")),
+                ])
+                + " |"
+            )
+        return "\n".join(md_lines)
     
     def close(self):
         """
@@ -386,6 +485,9 @@ class CalcolatoreDimensionePMI:
             dict: Aggregati calcolati
         """
         print("   📊 Calcolo aggregati con formula UE...")
+        # Modalità Excel-like: N/D trattato come 0 (abilitata di default)
+        import os
+        excel_mode = os.environ.get("PMI_EXCEL_MODE_ND_ZERO", "1").lower() in {"1", "true", "yes", "on"}
         
         # Valori core (manteniamo None se non disponibile, non convertiamo a 0)
         pers_core = principale.get("personale")
@@ -425,19 +527,25 @@ class CalcolatoreDimensionePMI:
         ]
         att_partner = sum(att_partner_values) if att_partner_values else None
         
-        # Totali: somma solo se almeno uno dei componenti non è None
-        # Se TUTTI sono None, risultato è None (non disponibile)
-        personale_totale = None
-        if pers_core is not None or pers_collegate is not None or pers_partner is not None:
+        # Totali
+        if excel_mode:
+            # Stile Excel: N/D=0 sempre. Il risultato è sempre un numero (0 se tutto N/D)
             personale_totale = (pers_core or 0) + (pers_collegate or 0) + (pers_partner or 0)
-        
-        fatturato_totale = None
-        if fatt_core is not None or fatt_collegate is not None or fatt_partner is not None:
             fatturato_totale = (fatt_core or 0) + (fatt_collegate or 0) + (fatt_partner or 0)
-        
-        attivo_totale = None
-        if att_core is not None or att_collegate is not None or att_partner is not None:
             attivo_totale = (att_core or 0) + (att_collegate or 0) + (att_partner or 0)
+        else:
+            # Stile "dati conservativi": se tutti i componenti sono None, totale None
+            personale_totale = None
+            if pers_core is not None or pers_collegate is not None or pers_partner is not None:
+                personale_totale = (pers_core or 0) + (pers_collegate or 0) + (pers_partner or 0)
+            
+            fatturato_totale = None
+            if fatt_core is not None or fatt_collegate is not None or fatt_partner is not None:
+                fatturato_totale = (fatt_core or 0) + (fatt_collegate or 0) + (fatt_partner or 0)
+            
+            attivo_totale = None
+            if att_core is not None or att_collegate is not None or att_partner is not None:
+                attivo_totale = (att_core or 0) + (att_collegate or 0) + (att_partner or 0)
         
         # Log con gestione None
         pers_str = f"{personale_totale:.1f}" if personale_totale is not None else "N/D"
@@ -494,6 +602,17 @@ class CalcolatoreDimensionePMI:
             dict: Classificazione con dettagli soglie
         """
         dimensione = "Grande Impresa"
+        # Modalità Excel-like: N/D=0 anche per la classificazione (confronti su 3 criteri)
+        import os
+        excel_mode = os.environ.get("PMI_EXCEL_MODE_ND_ZERO", "1").lower() in {"1", "true", "yes", "on"}
+        if excel_mode:
+            personale_x = personale or 0
+            fatturato_x = fatturato or 0
+            attivo_x = attivo or 0
+        else:
+            personale_x = personale
+            fatturato_x = fatturato
+            attivo_x = attivo
         
         # Helper: conta quanti criteri rispettano la soglia (ritorna True se almeno 2 su 3)
         # Se un valore è None, non può rispettare la soglia (non disponibile)
@@ -501,24 +620,25 @@ class CalcolatoreDimensionePMI:
             criteri_rispettati = 0
             criteri_disponibili = 0
             
-            if personale is not None:
+            if personale_x is not None:
                 criteri_disponibili += 1
-                if personale < pers_soglia:
+                if personale_x < pers_soglia:
                     criteri_rispettati += 1
             
-            if fatturato is not None:
+            if fatturato_x is not None:
                 criteri_disponibili += 1
-                if fatturato <= fatt_soglia:
+                if fatturato_x <= fatt_soglia:
                     criteri_rispettati += 1
             
-            if attivo is not None:
+            if attivo_x is not None:
                 criteri_disponibili += 1
-                if attivo <= att_soglia:
+                if attivo_x <= att_soglia:
                     criteri_rispettati += 1
             
-            # Se abbiamo meno di 2 criteri disponibili, non possiamo classificare
-            if criteri_disponibili < 2:
-                return False
+            # In modalità Excel consideriamo sempre 3 criteri disponibili (perché N/D=0)
+            if not excel_mode:
+                if criteri_disponibili < 2:
+                    return False
             
             # Almeno 2 su 3 criteri devono essere rispettati (tra quelli disponibili)
             return criteri_rispettati >= 2
@@ -550,19 +670,19 @@ class CalcolatoreDimensionePMI:
         # Dettaglio soglie rispettate
         soglie_rispettate = {
             "personale": {
-                "valore": personale,
+                "valore": personale_x,
                 "soglia_micro": SOGLIE_UE["micro"]["personale"],
                 "soglia_piccola": SOGLIE_UE["piccola"]["personale"],
                 "soglia_media": SOGLIE_UE["media"]["personale"]
             },
             "fatturato": {
-                "valore": fatturato,
+                "valore": fatturato_x,
                 "soglia_micro": SOGLIE_UE["micro"]["fatturato"],
                 "soglia_piccola": SOGLIE_UE["piccola"]["fatturato"],
                 "soglia_media": SOGLIE_UE["media"]["fatturato"]
             },
             "attivo": {
-                "valore": attivo,
+                "valore": attivo_x,
                 "soglia_micro": SOGLIE_UE["micro"]["attivo"],
                 "soglia_piccola": SOGLIE_UE["piccola"]["attivo"],
                 "soglia_media": SOGLIE_UE["media"]["attivo"]
@@ -574,7 +694,7 @@ class CalcolatoreDimensionePMI:
         return {
             "dimensione": dimensione,
             "soglie_rispettate": soglie_rispettate,
-            "note": self._genera_nota_classificazione(dimensione, personale, fatturato, attivo)
+            "note": self._genera_nota_classificazione(dimensione, personale_x, fatturato_x, attivo_x)
         }
     
     def _genera_nota_classificazione(self, dimensione: str, personale, fatturato, attivo) -> str:
