@@ -2211,6 +2211,31 @@ class CribisNuovaRicerca:
                     except ValueError:
                         continue
             
+            # Raccogli anche valori grezzi aggiuntivi per debug/validazione
+            raw_vals = {}
+            def estrai_con_varianti(nome_chiave: str, varianti_labels: list):
+                nonlocal raw_vals
+                for v in varianti_labels:
+                    pat = rf"{v}[:\s]*{numero}"
+                    m = re.search(pat, html_norm, re.IGNORECASE)
+                    if m:
+                        try:
+                            raw_vals[nome_chiave] = parse_num(m.group(1))
+                            return
+                        except Exception:
+                            continue
+            # Sezione sintesi bilancio e legali (subset utile)
+            estrai_con_varianti("ricavi", ["ricavi", "ricavi delle vendite e delle prestazioni", "ricavi vendite"]) 
+            estrai_con_varianti("valore_produzione", ["valore della produzione", "valore produzione"]) 
+            estrai_con_varianti("cash_flow", ["cash flow"]) 
+            estrai_con_varianti("utile_perdita", ["utile/perdita", "utile o perdita", "risultato d'esercizio"]) 
+            estrai_con_varianti("patrimonio_netto", ["patrimonio netto"]) 
+            estrai_con_varianti("immobilizzazioni", ["immobilizzazioni"]) 
+            estrai_con_varianti("tfr", ["tfr", "trattamento di fine rapporto"]) 
+            estrai_con_varianti("capitale_sociale_deliberato", ["capitale sociale deliberato"]) 
+            estrai_con_varianti("capitale_sociale_sottoscritto", ["capitale sociale sottoscritto"]) 
+            estrai_con_varianti("capitale_sociale_versato", ["capitale sociale versato"]) 
+
             # Determina stato dati
             if personale is not None and fatturato is not None and attivo is not None:
                 stato_dati = "completi"
@@ -2226,7 +2251,8 @@ class CribisNuovaRicerca:
                 "attivo": attivo,
                 "anno_riferimento": "N/D",
                 "stato_dati": stato_dati,
-                "fonte": "pagina_web"
+                "fonte": "pagina_web",
+                "valori_grezzi": raw_vals
             }
 
             # Dump di debug automatico se dati non completi o DEBUG abilitato

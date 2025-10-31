@@ -1487,6 +1487,13 @@
                                 ${soc.fatturato !== null ? `💰 €${(soc.fatturato / 1000).toFixed(0)}K` : '💰 N/D'} | 
                                 ${soc.attivo !== null ? `💼 €${(soc.attivo / 1000).toFixed(0)}K` : '💼 N/D'}
                             </div>
+                            ${soc.valori_grezzi ? `
+                            <details style="margin-top:8px;">
+                              <summary style="color:#bbb; cursor:pointer;">🔎 Valori grezzi letti</summary>
+                              <div style="color:#888; font-size:0.85em; margin-top:6px; line-height:1.6;">
+                                ${Object.entries(soc.valori_grezzi).map(([k,v]) => `${k}: €${(v||0).toLocaleString('it-IT')}`).join('<br>')}
+                              </div>
+                            </details>` : ''}
                         </div>
                     `;
                 });
@@ -1513,6 +1520,13 @@
                                 ${soc.fatturato !== null ? `💰 €${(soc.fatturato / 1000).toFixed(0)}K` : '💰 N/D'} | 
                                 ${soc.attivo !== null ? `💼 €${(soc.attivo / 1000).toFixed(0)}K` : '💼 N/D'}
                             </div>
+                            ${soc.valori_grezzi ? `
+                            <details style="margin-top:8px;">
+                              <summary style="color:#bbb; cursor:pointer;">🔎 Valori grezzi letti</summary>
+                              <div style="color:#888; font-size:0.85em; margin-top:6px; line-height:1.6;">
+                                ${Object.entries(soc.valori_grezzi).map(([k,v]) => `${k}: €${(v||0).toLocaleString('it-IT')}`).join('<br>')}
+                              </div>
+                            </details>` : ''}
                         </div>
                     `;
                 });
