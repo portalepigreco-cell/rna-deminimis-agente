@@ -1040,21 +1040,32 @@ class CribisNuovaRicerca:
                 f.write(body_text)
             print(f"💾 Testo salvato: debug_cribis_nuova_testo.txt ({len(body_text)} caratteri)")
             
-            # Pattern migliorato: cattura Nome + CF + percentuale in un colpo solo
-            # Formato: "NOME SOCIETA\nCod. Fisc.: 12345678901 - Italia\n...%"
+            # Pattern migliorato: cattura Nome + CF + P.IVA + percentuale
+            # Formato: "NOME SOCIETA\nCod. Fisc.: 12345678901 - Italia\n P. IVA: 12345678901\n...%"
             pattern_societa = r'(?:^|\n)(?:\d+(?:\.\d+)?\s+)?([A-Z][A-Z\s\.\-&]+?)\s*\n\s*Cod\.\s*Fisc\.\s*:\s*(\d{11})\s*-\s*Italia'
             
             matches = re.findall(pattern_societa, body_text, re.MULTILINE)
             print(f"🔍 Trovate {len(matches)} società italiane nel gruppo")
             
-            # Dizionario CF -> Nome per lookup veloce
+            # Dizionari CF -> Nome e CF -> P.IVA per lookup veloce
             cf_to_nome = {}
+            cf_to_piva = {}
             for nome, cf in matches:
                 nome_pulito = nome.strip()
                 # Rimuove numeri iniziali e spazi extra
                 nome_pulito = re.sub(r'^\d+(?:\.\d+)?\s+', '', nome_pulito).strip()
                 cf_to_nome[cf] = nome_pulito
-                print(f"   • {cf}: {nome_pulito}")
+                
+                # Cerca P.IVA associata a questo CF nel testo
+                # Pattern: cerca "P. IVA:" o "P.IVA:" dopo il CF
+                piva_pattern = rf'Cod\.\s*Fisc\.\s*:\s*{cf}\s*-\s*Italia.*?P\.?\s*IVA\s*:?\s*(\d{{11}})'
+                piva_match = re.search(piva_pattern, body_text, re.DOTALL | re.IGNORECASE)
+                if piva_match:
+                    piva = piva_match.group(1)
+                    cf_to_piva[cf] = piva
+                    print(f"   • {cf} (P.IVA: {piva}): {nome_pulito}")
+                else:
+                    print(f"   • {cf} (P.IVA: N/D): {nome_pulito}")
             
             # Estrae tutte le occorrenze di CF + percentuale
             # Pattern: "Cod. Fisc.: 12345678901 - Italia" seguito da percentuale
@@ -1091,15 +1102,20 @@ class CribisNuovaRicerca:
                     
                     # Evita duplicati
                     if not any(a["cf"] == cf for a in associate):
+                        # Recupera P.IVA (se disponibile)
+                        piva = cf_to_piva.get(cf)
+                        
                         associate.append({
                             "ragione_sociale": nome.upper(),
                             "cf": cf,
+                            "piva": piva,  # Aggiunta P.IVA (può essere None)
                             "percentuale": percentuale_str,
                             "percentuale_numerica": percentuale_numerica,
                             "categoria": categoria
                         })
                         emoji = "🔗" if categoria == "collegata" else "🤝"
-                        print(f"   ✅ {emoji} AGGIUNTA: {nome} ({categoria})")
+                        piva_info = f" | P.IVA: {piva}" if piva else " | P.IVA: N/D"
+                        print(f"   ✅ {emoji} AGGIUNTA: {nome} ({categoria}){piva_info}")
                     else:
                         print(f"   ⚠️  Già presente, skip duplicato")
                 
@@ -1255,7 +1271,7 @@ class CribisNuovaRicerca:
             
             return risultato
     
-    def scarica_company_card_completa(self, codice_fiscale: str) -> dict:
+    def scarica_company_card_completa(self, codice_fiscale: str, partita_iva: str = None) -> dict:
         """
         Apre la Company Card Completa della società richiesta ed estrae i dati finanziari.
         
@@ -1265,13 +1281,20 @@ class CribisNuovaRicerca:
         
         Args:
             codice_fiscale (str): CF dell'azienda
+            partita_iva (str, optional): P.IVA dell'azienda (preferita per la ricerca). Se non fornita, usa CF.
             
         Returns:
             dict: Dati finanziari estratti (personale, fatturato, attivo)
         """
         try:
+            # Usa P.IVA se disponibile, altrimenti CF
+            codice_ricerca = partita_iva if partita_iva else codice_fiscale
+            tipo_codice = "P.IVA" if partita_iva else "CF"
+            
             print(f"\n{'='*70}")
-            print(f"📊 Estrazione dati web per: {codice_fiscale}")
+            print(f"📊 Estrazione dati web per: {codice_ricerca} ({tipo_codice})")
+            if partita_iva and codice_fiscale != partita_iva:
+                print(f"   ℹ️ CF associato: {codice_fiscale}")
             print(f"{'='*70}\n")
             
             # STEP 0: Assicurati di essere sulla pagina principale
@@ -1289,10 +1312,10 @@ class CribisNuovaRicerca:
             
             print("   ✅ Sulla pagina principale\n")
             
-            # STEP 1: Ricerca CF
-            print("🔍 STEP 1: Ricerca CF...")
+            # STEP 1: Ricerca codice (P.IVA o CF)
+            print(f"🔍 STEP 1: Ricerca {tipo_codice}...")
             campo_ricerca = self.page.locator('input[title="Inserisci i termini da cercare"]')
-            campo_ricerca.fill(codice_fiscale)
+            campo_ricerca.fill(codice_ricerca)
             self.page.keyboard.press("Enter")
             
             # Attendi caricamento risultati (aumentato da 2s a 5s)
@@ -1333,18 +1356,20 @@ class CribisNuovaRicerca:
             if not is_visible:
                 # Screenshot per debug
                 try:
-                    screenshot_path = f"debug_no_results_{codice_fiscale}.png"
+                    screenshot_path = f"debug_no_results_{codice_ricerca}.png"
                     self.page.screenshot(path=screenshot_path, full_page=True)
                     print(f"   📸 Screenshot salvato: {screenshot_path}")
                 except:
                     pass
                 
-                print(f"   ❌ Azienda {codice_fiscale} non trovata nei risultati")
-                print(f"   💡 Possibili cause: società cessata, inattiva, o CF errato")
+                print(f"   ❌ Azienda {codice_ricerca} ({tipo_codice}) non trovata nei risultati")
+                print(f"   💡 Possibili cause: società cessata, inattiva, o codice errato")
                 
                 return {
                     "errore": "Azienda non trovata nei risultati",
                     "cf": codice_fiscale,
+                    "piva": partita_iva,
+                    "codice_ricerca": codice_ricerca,
                     "stato_dati": "errore"
                 }
             

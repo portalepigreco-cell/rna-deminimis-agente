@@ -383,7 +383,7 @@ def cribis_nuova_ricerca():
                     pass
         except Exception:
             pass
-
+        
         # Calcola de minimis per ogni società (import lazy)
         try:
             from rna_deminimis_playwright import RNACalculator

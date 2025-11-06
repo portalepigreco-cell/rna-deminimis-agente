@@ -138,7 +138,8 @@ class CalcolatoreDimensionePMI:
             # Dati impresa principale
             dati_principale = self._scarica_dati_finanziari(
                 gruppo['principale']['cf'],
-                gruppo['principale']['ragione_sociale']
+                gruppo['principale']['ragione_sociale'],
+                gruppo['principale'].get('piva')  # P.IVA se disponibile
             )
             risultato["impresa_principale"].update(dati_principale)
             
@@ -151,7 +152,8 @@ class CalcolatoreDimensionePMI:
                     break
                 
                 print(f"\n📊 [{i}/{len(risultato['societa_collegate'])}] Collegata: {soc['nome']}")
-                dati = self._scarica_dati_finanziari(soc['cf'], soc['nome'])
+                # Passa P.IVA se disponibile (migliora ricerca su Cribis)
+                dati = self._scarica_dati_finanziari(soc['cf'], soc['nome'], soc.get('piva'))
                 soc.update(dati)
                 societa_processate += 1
             
@@ -162,7 +164,8 @@ class CalcolatoreDimensionePMI:
                     break
                 
                 print(f"\n📊 [{i}/{len(risultato['societa_partner'])}] Partner: {soc['nome']}")
-                dati = self._scarica_dati_finanziari(soc['cf'], soc['nome'])
+                # Passa P.IVA se disponibile (migliora ricerca su Cribis)
+                dati = self._scarica_dati_finanziari(soc['cf'], soc['nome'], soc.get('piva'))
                 soc.update(dati)
                 societa_processate += 1
             
@@ -415,7 +418,7 @@ class CalcolatoreDimensionePMI:
                 "errore": f"Errore estrazione gruppo: {str(e)}"
             }
     
-    def _scarica_dati_finanziari(self, codice_fiscale: str, ragione_sociale: str) -> Dict:
+    def _scarica_dati_finanziari(self, codice_fiscale: str, ragione_sociale: str, partita_iva: str = None) -> Dict:
         """
         Scarica Company Card Completa ed estrae dati finanziari.
         
@@ -425,6 +428,7 @@ class CalcolatoreDimensionePMI:
         Args:
             codice_fiscale (str): CF dell'azienda
             ragione_sociale (str): Nome azienda
+            partita_iva (str, optional): P.IVA dell'azienda (preferita per ricerca Cribis)
             
         Returns:
             dict: Dati finanziari estratti
@@ -436,8 +440,9 @@ class CalcolatoreDimensionePMI:
         # Se solleva Exception (bottone non trovato, pagina errata), PROPAGA per bloccare
         
         # Usa il metodo di Cribis per aprire Company Card ed estrarre dati dalla pagina
+        # Passa P.IVA se disponibile per migliorare la ricerca (Cribis preferisce P.IVA)
         # Se questo fallisce (Exception), viene propagata e blocca il processo
-        dati = self.cribis.scarica_company_card_completa(codice_fiscale)
+        dati = self.cribis.scarica_company_card_completa(codice_fiscale, partita_iva)
 
         # PDF: disattivato di default per non bloccare il flusso "Dimensione".
         # Abilitabile impostando CRIBIS_PDF_AUTO=1 (o true) nell'ambiente.
