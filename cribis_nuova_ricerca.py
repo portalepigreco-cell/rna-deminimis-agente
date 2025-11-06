@@ -54,8 +54,6 @@ class CribisNuovaRicerca:
         self.playwright = None
         self.browser = None
         self.page = None
-        # Traccia PDF già scaricati per CF per evitare duplicati
-        self._pdf_downloaded_by_cf = set()
     
     def _screenshot(self, path: str, descrizione: str = ""):
         """
@@ -1259,15 +1257,17 @@ class CribisNuovaRicerca:
     
     def scarica_company_card_completa(self, codice_fiscale: str) -> dict:
         """
-        Apre la Company Card Completa della società richiesta e:
-        - estrae i dati dalla pagina (HTML-first)
-        - prova a scaricare anche il PDF tramite il link "Scarica" in alto a destra
+        Apre la Company Card Completa della società richiesta ed estrae i dati finanziari.
+        
+        Estrazione dati:
+        1. Priorità: estrazione DOM diretta (XPath precisi sulla tabella bilancio)
+        2. Fallback: regex su HTML se DOM non restituisce valori
         
         Args:
             codice_fiscale (str): CF dell'azienda
             
         Returns:
-            dict: Dati estratti dalla pagina web
+            dict: Dati finanziari estratti (personale, fatturato, attivo)
         """
         try:
             print(f"\n{'='*70}")
@@ -2038,6 +2038,152 @@ class CribisNuovaRicerca:
             url_dopo_step3 = self.page.url
             print(f"   📍 URL dopo STEP 3: {url_dopo_step3}")
             
+            # STEP 3.5: Verifica se c'è una pagina di configurazione per selezionare i campi
+            # Se presente, seleziona: Dipendenti, Fatturato, Totale Attività
+            print("🔧 STEP 3.5: Verifica pagina configurazione campi...")
+            try:
+                self.page.wait_for_load_state("domcontentloaded")
+                time.sleep(2)  # Attendi eventuale caricamento JS
+                
+                # Cerca elementi che indicano una pagina di configurazione/selezione campi
+                # Pattern comuni: checkbox, form, select, campi da selezionare
+                page_text = self.page.inner_text("body").lower()
+                page_html = self.page.content()
+                
+                # Verifica se siamo su una pagina di configurazione (non ancora sulla Company Card)
+                is_config_page = (
+                    "seleziona" in page_text or
+                    "selezionare" in page_text or
+                    "campi" in page_text or
+                    "configura" in page_text or
+                    "opzioni" in page_text or
+                    "checkbox" in page_html.lower() or
+                    'type="checkbox"' in page_html or
+                    "form" in page_html.lower() and "select" in page_html.lower()
+                ) and "/Storage/Document/" not in url_dopo_step3
+                
+                if is_config_page:
+                    print("   ✅ Pagina di configurazione rilevata! Seleziono i campi richiesti...")
+                    
+                    # Campi da selezionare per il calcolo dimensione d'impresa
+                    campi_da_selezionare = [
+                        "Dipendenti",
+                        "Fatturato", 
+                        "Totale Attività"
+                    ]
+                    
+                    # Cerca e seleziona ogni campo
+                    campi_selezionati = 0
+                    for campo_nome in campi_da_selezionare:
+                        try:
+                            # Metodo 1: Cerca checkbox o input con label contenente il nome del campo
+                            # Pattern: label con testo "Dipendenti", "Fatturato", "Totale Attività"
+                            selettori_campo = [
+                                f'input[type="checkbox"][id*="{campo_nome.lower()}" i]',
+                                f'input[type="checkbox"][name*="{campo_nome.lower()}" i]',
+                                f'input[type="checkbox"][value*="{campo_nome.lower()}" i]',
+                                f'label:has-text("{campo_nome}") input[type="checkbox"]',
+                                f'label:has-text("{campo_nome}") + input[type="checkbox"]',
+                                f'//label[contains(text(), "{campo_nome}")]/following-sibling::input[@type="checkbox"]',
+                                f'//label[contains(text(), "{campo_nome}")]/preceding-sibling::input[@type="checkbox"]',
+                                f'//input[@type="checkbox"][following-sibling::label[contains(text(), "{campo_nome}")]]',
+                                f'//input[@type="checkbox"][preceding-sibling::label[contains(text(), "{campo_nome}")]]',
+                            ]
+                            
+                            campo_trovato = False
+                            for sel in selettori_campo:
+                                try:
+                                    if sel.startswith('//'):
+                                        # XPath
+                                        checkbox = self.page.locator(f'xpath={sel}').first
+                                    else:
+                                        # CSS selector
+                                        checkbox = self.page.locator(sel).first
+                                    
+                                    if checkbox.count() > 0 and checkbox.is_visible(timeout=2000):
+                                        # Verifica se è già selezionato
+                                        is_checked = checkbox.is_checked()
+                                        if not is_checked:
+                                            checkbox.check()
+                                            print(f"   ✅ Campo '{campo_nome}' selezionato (selettore: {sel[:50]})")
+                                        else:
+                                            print(f"   ✅ Campo '{campo_nome}' già selezionato")
+                                        campo_trovato = True
+                                        campi_selezionati += 1
+                                        break
+                                except Exception:
+                                    continue
+                            
+                            if not campo_trovato:
+                                print(f"   ⚠️  Campo '{campo_nome}' non trovato con selettori standard, provo ricerca generica...")
+                                # Metodo 2: Cerca nel testo della pagina e risali al checkbox più vicino
+                                try:
+                                    label_elem = self.page.get_by_text(campo_nome, exact=False).first
+                                    if label_elem and label_elem.is_visible(timeout=2000):
+                                        # Cerca checkbox nelle vicinanze
+                                        parent = label_elem.locator('xpath=ancestor::*[contains(@class, "form-group") or contains(@class, "field") or contains(@class, "checkbox")]').first
+                                        if parent.count() > 0:
+                                            checkbox = parent.locator('input[type="checkbox"]').first
+                                            if checkbox.count() > 0:
+                                                if not checkbox.is_checked():
+                                                    checkbox.check()
+                                                    print(f"   ✅ Campo '{campo_nome}' selezionato (ricerca generica)")
+                                                else:
+                                                    print(f"   ✅ Campo '{campo_nome}' già selezionato (ricerca generica)")
+                                                campo_trovato = True
+                                                campi_selezionati += 1
+                                except Exception as gen_err:
+                                    print(f"   ⚠️  Ricerca generica fallita per '{campo_nome}': {gen_err}")
+                        
+                        except Exception as campo_err:
+                            print(f"   ⚠️  Errore selezione campo '{campo_nome}': {campo_err}")
+                            continue
+                    
+                    print(f"   📊 Campi selezionati: {campi_selezionati}/{len(campi_da_selezionare)}")
+                    
+                    # Cerca e clicca il bottone di conferma/invio (es. "Conferma", "Genera", "Richiedi", "Invia")
+                    try:
+                        bottone_conferma_selettori = [
+                            'button:has-text("Conferma")',
+                            'button:has-text("Genera")',
+                            'button:has-text("Richiedi")',
+                            'button:has-text("Invia")',
+                            'button[type="submit"]',
+                            'input[type="submit"]',
+                            'button.btn-primary',
+                            'button.btn-success',
+                            '.btn-primary',
+                            '.btn-success'
+                        ]
+                        
+                        bottone_conferma_trovato = False
+                        for btn_sel in bottone_conferma_selettori:
+                            try:
+                                btn = self.page.locator(btn_sel).first
+                                if btn.count() > 0 and btn.is_visible(timeout=2000):
+                                    btn.click()
+                                    print(f"   ✅ Bottone conferma cliccato (selettore: {btn_sel})")
+                                    bottone_conferma_trovato = True
+                                    # Attendi caricamento nuova pagina
+                                    self.page.wait_for_load_state("domcontentloaded")
+                                    time.sleep(2)
+                                    url_dopo_step3 = self.page.url
+                                    print(f"   📍 URL dopo conferma: {url_dopo_step3}")
+                                    break
+                            except Exception:
+                                continue
+                        
+                        if not bottone_conferma_trovato:
+                            print("   ⚠️  Bottone conferma non trovato (forse la selezione è automatica)")
+                    except Exception as btn_err:
+                        print(f"   ⚠️  Errore click bottone conferma: {btn_err}")
+                else:
+                    print("   ℹ️  Nessuna pagina di configurazione rilevata (forse selezione automatica o già configurata)")
+            
+            except Exception as config_err:
+                print(f"   ⚠️  Errore gestione pagina configurazione (non critico): {config_err}")
+                # Non bloccare l'esecuzione, continua comunque
+            
             # VERIFICA FINALE CRITICA: dobbiamo essere sulla Company Card Completa
             # Escludi esplicitamente DocumentUnavailable
             if "DocumentUnavailable" in url_dopo_step3:
@@ -2117,32 +2263,6 @@ class CribisNuovaRicerca:
                 print("   ⚠️  DOM non ha restituito valori → fallback regex su HTML")
                 html_content = self.page.content()
                 dati_estratti = self._estrai_dati_finanziari_da_pagina(html_content, codice_fiscale)
-
-            # FALLBACK AUTOMATICO: Se i dati dalla pagina sono assenti, prova a scaricare il PDF e leggere da lì
-            if dati_estratti.get("stato_dati") in ("assenti", "errore") or \
-               (dati_estratti.get("personale") is None and dati_estratti.get("fatturato") is None and dati_estratti.get("attivo") is None):
-                print("⚠️  Dati dalla pagina web assenti/incompleti → FALLBACK: scarico PDF e leggo da lì")
-                try:
-                    pdf_res = self.scarica_pdf_company_card_corrente(codice_fiscale)
-                    if pdf_res.get("success") and pdf_res.get("filename"):
-                        pdf_path = pdf_res.get("path") or os.path.join(os.getcwd(), "downloads", pdf_res.get("filename"))
-                        if os.path.exists(pdf_path):
-                            dati_pdf = self._estrai_dati_finanziari_da_pdf(pdf_path, codice_fiscale)
-                            # Unisci dati PDF a quelli web (PDF ha priorità solo per valori non None)
-                            if dati_pdf.get("personale") is not None:
-                                dati_estratti["personale"] = dati_pdf["personale"]
-                            if dati_pdf.get("fatturato") is not None:
-                                dati_estratti["fatturato"] = dati_pdf["fatturato"]
-                            if dati_pdf.get("attivo") is not None:
-                                dati_estratti["attivo"] = dati_pdf["attivo"]
-                            # Aggiorna stato
-                            if dati_estratti.get("personale") is not None or dati_estratti.get("fatturato") is not None or dati_estratti.get("attivo") is not None:
-                                dati_estratti["stato_dati"] = "parziali" if (dati_estratti.get("personale") is None or dati_estratti.get("fatturato") is None or dati_estratti.get("attivo") is None) else "completi"
-                            dati_estratti["fonte"] = "pdf_fallback"
-                            dati_estratti["pdf_filename"] = pdf_res.get("filename")
-                            print(f"✅ Dati dal PDF: personale={dati_estratti.get('personale')}, fatturato={dati_estratti.get('fatturato')}, attivo={dati_estratti.get('attivo')}")
-                except Exception as pdf_err:
-                    print(f"⚠️  Fallback PDF fallito (non critico): {pdf_err}")
             
             print(f"✅ Dati estratti: {dati_estratti}")
             
@@ -2415,141 +2535,140 @@ class CribisNuovaRicerca:
                 "fonte": "pagina_web"
             }
 
-    def _estrai_dati_finanziari_da_pdf(self, pdf_path: str, cf: str) -> dict:
-        """
-        Estrae dati finanziari dal PDF della Company Card.
-        
-        Args:
-            pdf_path (str): Percorso del file PDF
-            cf (str): Codice fiscale per debug
-            
-        Returns:
-            dict: Dati finanziari estratti dal PDF
-        """
-        try:
-            import pdfplumber
-            personale = None
-            fatturato = None
-            attivo = None
-            numero = r"([0-9][0-9\.\s]*?,?[0-9]{0,2})"
-            
-            with pdfplumber.open(pdf_path) as pdf:
-                text_full = ""
-                for page in pdf.pages:
-                    text_full += page.extract_text() or ""
-            
-            # Normalizza spazi
-            text_norm = text_full.replace('\u00A0', ' ').replace('\u202F', ' ').replace('\u2009', ' ')
-            
-            def parse_num(s: str) -> float:
-                cleaned = s.replace('.', '').replace(' ', '').replace(',', '.')
-                return float(cleaned)
-            
-            # Cerca DIPENDENTI
-            pat_dip = rf"DIPENDENTI[:\s]*{numero}"
-            m = re.search(pat_dip, text_norm, re.IGNORECASE)
-            if m:
-                try:
-                    personale = parse_num(m.group(1))
-                    print(f"   ✅ PDF: Personale trovato: {personale}")
-                except:
-                    pass
-            
-            # Cerca FATTURATO / RICAVI / VALORE PRODUZIONE (priorità)
-            for label in ["RICAVI DELLE VENDITE E DELLE PRESTAZIONI", "RICAVI", "VALORE DELLA PRODUZIONE", "FATTURATO"]:
-                pat = rf"{re.escape(label)}[:\s]*{numero}"
-                m = re.search(pat, text_norm, re.IGNORECASE)
-                if m:
-                    try:
-                        candidato = parse_num(m.group(1))
-                        if candidato >= 50000:  # Evita falsi positivi piccoli
-                            fatturato = candidato
-                            print(f"   ✅ PDF: Fatturato ({label}) trovato: {fatturato:,.2f}")
-                            break
-                    except:
-                        continue
-            
-            # Cerca TOTALE ATTIVITÀ
-            pat_att = rf"TOTALE\s+ATTIVIT[ÀA][:\s]*{numero}"
-            m = re.search(pat_att, text_norm, re.IGNORECASE)
-            if m:
-                try:
-                    attivo = parse_num(m.group(1))
-                    print(f"   ✅ PDF: Attivo trovato: {attivo:,.2f}")
-                except:
-                    pass
-            
-            stato = "completi" if all(v is not None for v in [personale, fatturato, attivo]) else ("parziali" if any(v is not None for v in [personale, fatturato, attivo]) else "assenti")
-            
-            return {
-                "cf": cf,
-                "personale": personale,
-                "fatturato": fatturato,
-                "attivo": attivo,
-                "anno_riferimento": "N/D",
-                "stato_dati": stato,
-                "fonte": "pdf"
-            }
-        except Exception as e:
-            print(f"   ❌ Errore lettura PDF: {e}")
-            return {
-                "cf": cf,
-                "personale": None,
-                "fatturato": None,
-                "attivo": None,
-                "anno_riferimento": "N/D",
-                "stato_dati": "errore",
-                "fonte": "pdf"
-            }
+    # METODO DEPRECATO: non più usato (estrazione diretta dal DOM più efficace)
+    # Il metodo _estrai_dati_finanziari_da_pdf è stato rimosso
+    # Motivo: estrazione DOM più veloce, affidabile e senza timeout
 
     def _estrai_dati_finanziari_da_dom(self, page, cf: str) -> dict:
-        """Estrae i dati leggendo direttamente dal DOM con XPath (Company Card)."""
+        """
+        Estrae i dati finanziari leggendo direttamente dal DOM con XPath (Company Card).
+        
+        Struttura standard della tabella:
+        - Tabella: table.itrade-table (o table.table-responsive.itrade-list.itrade-table)
+        - Tbody: tbody.steel
+        - Righe: ogni riga ha un <td> con il label nella prima colonna
+        - Valori: 3 <td> seguenti con valori per 2024, 2023, 2022 (primo = 2024)
+        
+        Campi da estrarre:
+        - Dipendenti: personale (ULA)
+        - Fatturato: fatturato
+        - Totale Attività: attivo
+        
+        Se una cella è vuota, il dato non è disponibile (None).
+        """
         def norm_num(s: str):
-            if s is None:
+            """Normalizza stringa numerica: rimuove separatori migliaia e converte virgola in punto."""
+            if s is None or not s.strip():
                 return None
             s = s.replace('\u00A0', ' ').replace('\u202F', ' ').replace('\u2009', ' ').strip()
+            # Rimuove punti (separatori migliaia) e spazi, converte virgola in punto
             s = s.replace('.', '').replace(' ', '').replace(',', '.')
             try:
                 return float(s)
             except:
                 return None
-        def first_text(xpath: str):
+        
+        def estrai_valore_da_riga(label_testo: str, anno_index: int = 1) -> float:
+            """
+            Estrae il valore dalla riga della tabella che contiene il label specificato.
+            
+            Args:
+                label_testo: Testo del label da cercare (es. "Dipendenti", "Fatturato", "Totale Attività")
+                anno_index: Indice della colonna (1=2024, 2=2023, 3=2022). Default 1 (2024).
+            
+            Returns:
+                float | None: Valore normalizzato o None se non trovato/vuoto
+            """
             try:
-                el = page.locator(f"xpath={xpath}").first
-                if el and el.is_visible(timeout=2000):
-                    return (el.inner_text() or '').strip()
-            except Exception:
-                return None
+                # XPath: trova la riga <tr> che contiene un <td> con il testo del label
+                # Poi prendi il <td> all'indice specificato (primo dopo il label = 2024)
+                # La struttura è: <tr><td>Label</td><td>2024</td><td>2023</td><td>2022</td></tr>
+                xpath_riga = f"//tbody[@class='steel']//tr[td[normalize-space()='{label_testo}']]"
+                
+                # Prova prima con tbody.steel (struttura standard)
+                riga = page.locator(f"xpath={xpath_riga}").first
+                if riga.count() == 0:
+                    # Fallback: cerca in qualsiasi tbody
+                    xpath_riga_fallback = f"//table//tbody//tr[td[normalize-space()='{label_testo}']]"
+                    riga = page.locator(f"xpath={xpath_riga_fallback}").first
+                
+                if riga.count() > 0:
+                    # Prendi il <td> all'indice specificato (anno_index = 1 per 2024)
+                    # Il primo <td> è il label (indice 0), quindi anno_index=1 è il secondo <td> (2024)
+                    celle = riga.locator("td").all()
+                    if len(celle) > anno_index:
+                        cella_valore = celle[anno_index]
+                        if cella_valore.is_visible(timeout=1000):
+                            testo = (cella_valore.inner_text() or '').strip()
+                            # Se la cella è vuota, il dato non è disponibile
+                            if not testo:
+                                return None
+                            return norm_num(testo)
+            except Exception as e:
+                # Log silenzioso per debug (non blocca l'estrazione)
+                pass
             return None
-
-        # Mappa etichette → xpath cella valore (prima colonna è label, poi colonne per anni)
-        x_attivo = "//table//td[normalize-space()='TOTALE ATTIVITÀ']/following-sibling::td[1]"
-        x_ricavi = "//table//td[normalize-space()='RICAVI' or contains(.,'RICAVI DELLE VENDITE')]/following-sibling::td[1]"
-        x_val_prod = "//table//td[normalize-space()='VALORE DELLA PRODUZIONE']/following-sibling::td[1]"
-        x_dip = "//table//td[normalize-space()='DIPENDENTI']/following-sibling::td[1]"
-
-        valore_att = norm_num(first_text(x_attivo))
-        valore_ric = norm_num(first_text(x_ricavi))
-        valore_val_prod = norm_num(first_text(x_val_prod))
-        valore_dip = norm_num(first_text(x_dip))
-
-        # Priorità fatturato: Ricavi>Valore Produzione; scarta importi troppo piccoli
-        fatturato = None
-        for v in [valore_ric, valore_val_prod]:
-            if v is not None and v >= 50000:
-                fatturato = v
+        
+        # Estrai valori per anno 2024 (indice 1, primo dopo il label)
+        # Nota: "Dipendenti" può essere scritto con maiuscole/minuscole variabili
+        valore_dip = None
+        for label_variante in ["Dipendenti", "DIPENDENTI", "dipendenti"]:
+            valore_dip = estrai_valore_da_riga(label_variante, anno_index=1)
+            if valore_dip is not None:
                 break
-
-        personale = valore_dip if valore_dip is not None else None
-        attivo = valore_att
-
+        
+        # Fatturato: cerca prima "Fatturato", poi fallback a "Ricavi" o "Valore della produzione"
+        valore_fatturato = estrai_valore_da_riga("Fatturato", anno_index=1)
+        if valore_fatturato is None:
+            # Fallback: cerca "Ricavi"
+            valore_ricavi = estrai_valore_da_riga("Ricavi", anno_index=1)
+            if valore_ricavi is not None and valore_ricavi >= 50000:
+                valore_fatturato = valore_ricavi
+            else:
+                # Fallback: cerca "Valore della produzione"
+                valore_val_prod = estrai_valore_da_riga("Valore della produzione", anno_index=1)
+                if valore_val_prod is not None and valore_val_prod >= 50000:
+                    valore_fatturato = valore_val_prod
+        
+        # Totale Attività
+        valore_attivo = estrai_valore_da_riga("Totale Attività", anno_index=1)
+        if valore_attivo is None:
+            # Fallback: cerca varianti
+            for label_variante in ["TOTALE ATTIVITÀ", "Totale attività", "TOTALE ATTIVITA"]:
+                valore_attivo = estrai_valore_da_riga(label_variante, anno_index=1)
+                if valore_attivo is not None:
+                    break
+        
+        # Assegna valori finali
+        personale = valore_dip
+        fatturato = valore_fatturato
+        attivo = valore_attivo
+        
+        # Log risultati
+        if personale is not None:
+            print(f"   ✅ Personale (Dipendenti) trovato: {personale}")
+        else:
+            print(f"   ⚠️  Personale (Dipendenti) non disponibile")
+        
+        if fatturato is not None:
+            print(f"   ✅ Fatturato trovato: {fatturato:,.2f}")
+        else:
+            print(f"   ⚠️  Fatturato non disponibile")
+        
+        if attivo is not None:
+            print(f"   ✅ Attivo (Totale Attività) trovato: {attivo:,.2f}")
+        else:
+            print(f"   ⚠️  Attivo (Totale Attività) non disponibile")
+        
+        # Determina stato dati
         stato = "completi" if all(x is not None for x in [personale, fatturato, attivo]) else ("parziali" if any(x is not None for x in [personale, fatturato, attivo]) else "assenti")
+        
         return {
             "cf": cf,
             "personale": personale,
             "fatturato": fatturato,
             "attivo": attivo,
-            "anno_riferimento": "N/D",
+            "anno_riferimento": "2024",  # Usiamo sempre l'anno più recente (2024)
             "stato_dati": stato,
             "fonte": "pagina_web_dom"
         }

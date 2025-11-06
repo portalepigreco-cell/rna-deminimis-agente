@@ -343,16 +343,6 @@
         }
         .tip:hover .tiptext { visibility: visible; opacity: 1; }
 
-        /* Pulsante download disabilitato */
-        .btn-download-disabled {
-            background: #555 !important;
-            color: #bbb !important;
-            padding: 6px 10px;
-            border-radius: 6px;
-            font-size: 0.85em;
-            cursor: not-allowed;
-            opacity: 0.6;
-        }
     </style>
 </head>
 <body>
@@ -1295,7 +1285,7 @@
                 const taskId = startData.task_id;
                 console.log('🆔 Task creato:', taskId);
 
-                // Polling dello stato ogni 3s - timeout molto alto per download/upload PDF
+                // Polling dello stato ogni 3s
                 await new Promise((resolve, reject) => {
                     const pollIntervalMs = 3000;
                     let attempts = 0;
@@ -1479,7 +1469,6 @@
                     html += `
                         <div style="background: #1a1a1a; padding: 12px; margin-bottom: 8px; border-radius: 8px;">
                             <div style="color: #fff; font-weight: 600; margin-bottom: 5px; display:flex; align-items:center; gap:10px;">${soc.nome} ${statoDati}
-                                ${soc.pdf_filename ? `<a href="/download/${soc.pdf_filename}" target="_blank" style="background:#9b59b6; color:#fff; padding:6px 10px; border-radius:6px; text-decoration:none; font-size:0.85em;">⬇️ Scarica PDF</a>` : `<span class=\"btn-download-disabled tip\">⬇️ Scarica PDF<span class=\"tiptext\">PDF non disponibile</span></span>`}
                             </div>
                             <div style="color: #a0a0a0; font-size: 0.9em;">
                                 CF: ${soc.cf} | Quota: ${soc.percentuale}%<br>
@@ -1512,7 +1501,6 @@
                     html += `
                         <div style="background: #1a1a1a; padding: 12px; margin-bottom: 8px; border-radius: 8px;">
                             <div style="color: #fff; font-weight: 600; margin-bottom: 5px; display:flex; align-items:center; gap:10px;">${soc.nome} ${statoDati}
-                                ${soc.pdf_filename ? `<a href="/download/${soc.pdf_filename}" target="_blank" style="background:#9b59b6; color:#fff; padding:6px 10px; border-radius:6px; text-decoration:none; font-size:0.85em;">⬇️ Scarica PDF</a>` : `<span class=\"btn-download-disabled tip\">⬇️ Scarica PDF<span class=\"tiptext\">PDF non disponibile</span></span>`}
                             </div>
                             <div style="color: #a0a0a0; font-size: 0.9em;">
                                 CF: ${soc.cf} | Quota: ${soc.percentuale}% (pro-rata)<br>
