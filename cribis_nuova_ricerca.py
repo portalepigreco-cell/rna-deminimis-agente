@@ -111,6 +111,27 @@ class CribisNuovaRicerca:
         if self.playwright:
             self.playwright.stop()
     
+    def _check_and_handle_session_expired(self):
+        """
+        Verifica se la sessione è scaduta e, in caso, esegue re-login.
+        
+        Returns:
+            bool: True se la sessione è valida (o è stato fatto re-login con successo)
+        """
+        current_url = self.page.url
+        if "sessionExpired" in current_url or "LogOn" in current_url:
+            print("⚠️  Sessione scaduta rilevata, eseguo re-login automatico...")
+            try:
+                if not self.login():
+                    print("❌ Re-login automatico fallito")
+                    return False
+                print("✅ Re-login automatico completato con successo")
+                return True
+            except Exception as e:
+                print(f"❌ Errore durante re-login automatico: {e}")
+                return False
+        return True
+    
     def login(self):
         """
         Esegue login su Cribis X
@@ -307,13 +328,10 @@ class CribisNuovaRicerca:
             except Exception:
                 pass
             
-            # Se per qualche motivo siamo finiti di nuovo su LogOn, prova a riloggarti
-            if "LogOn" in (self.page.url or ""):
-                print("⚠️  Redirect a LogOn; provo login e torno in Home...")
-                if not self.login():
-                    return False
-                self.page.goto(f"{self.base_url}/#Home/Index", wait_until="domcontentloaded")
-                time.sleep(1)
+            # Verifica e gestisce eventuali session expired
+            if not self._check_and_handle_session_expired():
+                print("❌ Impossibile ripristinare la sessione")
+                return False
             
             # Selettore SPECIFICO fornito dall'utente
             selettori_campo = [
@@ -1286,6 +1304,62 @@ class CribisNuovaRicerca:
         Returns:
             dict: Dati finanziari estratti (personale, fatturato, attivo)
         """
+        # Retry logic per gestire session expired
+        max_retries = 2
+        for attempt in range(max_retries):
+            try:
+                return self._scarica_company_card_completa_internal(codice_fiscale, partita_iva)
+            except Exception as e:
+                error_msg = str(e)
+                if "SESSION_EXPIRED:" in error_msg:
+                    if attempt < max_retries - 1:
+                        print(f"\n{'='*70}")
+                        print(f"🔄 TENTATIVO {attempt + 2}/{max_retries}: Sessione scaduta, eseguo re-login...")
+                        print(f"{'='*70}\n")
+                        # Re-login
+                        try:
+                            self.page.goto(f"{self.base_url}/#Home/Index", wait_until="domcontentloaded")
+                            time.sleep(2)
+                            if "LogOn" in self.page.url or "sessionExpired" in self.page.url:
+                                if not self.login():
+                                    print("❌ Re-login fallito!")
+                                    raise Exception("Re-login fallito dopo session expired")
+                                print("✅ Re-login completato con successo!")
+                            else:
+                                print("✅ Sessione già valida dopo navigazione a Home")
+                        except Exception as login_err:
+                            print(f"❌ Errore durante re-login: {login_err}")
+                            if attempt < max_retries - 1:
+                                print("⏳ Attendo 5 secondi prima di riprovare...")
+                                time.sleep(5)
+                                continue
+                            else:
+                                raise
+                        # Attendi un po' prima di riprovare
+                        print("⏳ Attendo 3 secondi prima di riprovare l'operazione...")
+                        time.sleep(3)
+                        continue
+                    else:
+                        print(f"❌ Tutti i tentativi ({max_retries}) falliti a causa di session expired")
+                        raise
+                else:
+                    # Per altri errori, propaga subito
+                    raise
+        
+        # Se arriviamo qui senza risultato, errore generico
+        raise Exception("Operazione fallita dopo tutti i tentativi")
+    
+    def _scarica_company_card_completa_internal(self, codice_fiscale: str, partita_iva: str = None) -> dict:
+        """
+        Implementazione interna di scarica_company_card_completa (usata per retry logic).
+        
+        Args:
+            codice_fiscale (str): CF dell'azienda
+            partita_iva (str, optional): P.IVA dell'azienda
+            
+        Returns:
+            dict: Dati finanziari estratti
+        """
         try:
             # Usa P.IVA se disponibile, altrimenti CF
             codice_ricerca = partita_iva if partita_iva else codice_fiscale
@@ -1296,6 +1370,10 @@ class CribisNuovaRicerca:
             if partita_iva and codice_fiscale != partita_iva:
                 print(f"   ℹ️ CF associato: {codice_fiscale}")
             print(f"{'='*70}\n")
+            
+            # Verifica sessione prima di iniziare
+            if not self._check_and_handle_session_expired():
+                raise Exception("SESSION_EXPIRED:Impossibile ripristinare la sessione all'inizio dell'operazione")
             
             # STEP 0: Assicurati di essere sulla pagina principale
             print("🔄 STEP 0: Torna alla pagina principale...")
@@ -1791,6 +1869,10 @@ class CribisNuovaRicerca:
                                     print(f"   ❌ ERRORE CRITICO: Documento non disponibile!")
                                     print(f"      URL ottenuto: {url_dopo_click}")
                                     raise Exception(f"Documento 'Company Card Completa' non disponibile per questo CF. URL: {url_dopo_click}")
+                                elif "sessionExpired" in url_dopo_click or "LogOn" in url_dopo_click:
+                                    print(f"   ⚠️  SESSIONE SCADUTA! URL: {url_dopo_click}")
+                                    print(f"      Tento re-login e riprovo l'operazione...")
+                                    raise Exception(f"SESSION_EXPIRED:{url_dopo_click}")
                                 else:
                                     print(f"   ❌ ERRORE CRITICO: URL non corrisponde a Company Card!")
                                     print(f"      URL atteso: contiene '/Storage/Document/' (escludendo DocumentUnavailable)")
@@ -1872,6 +1954,10 @@ class CribisNuovaRicerca:
                                                     print(f"   ❌ ERRORE CRITICO: Documento non disponibile!")
                                                     print(f"      URL ottenuto: {url_dopo_click}")
                                                     raise Exception(f"Documento 'Company Card Completa' non disponibile per questo CF. URL: {url_dopo_click}")
+                                                elif "sessionExpired" in url_dopo_click or "LogOn" in url_dopo_click:
+                                                    print(f"   ⚠️  SESSIONE SCADUTA! URL: {url_dopo_click}")
+                                                    print(f"      Tento re-login e riprovo l'operazione...")
+                                                    raise Exception(f"SESSION_EXPIRED:{url_dopo_click}")
                                                 else:
                                                     print(f"   ❌ ERRORE CRITICO: URL non corrisponde a Company Card!")
                                                     print(f"      URL atteso: contiene '/Storage/Document/' (escludendo DocumentUnavailable)")
@@ -1967,6 +2053,10 @@ class CribisNuovaRicerca:
                                                             print(f"   ❌ ERRORE CRITICO: Documento non disponibile!")
                                                             print(f"      URL ottenuto: {url_dopo_click}")
                                                             raise Exception(f"Documento 'Company Card Completa' non disponibile per questo CF. URL: {url_dopo_click}")
+                                                        elif "sessionExpired" in url_dopo_click or "LogOn" in url_dopo_click:
+                                                            print(f"   ⚠️  SESSIONE SCADUTA! URL: {url_dopo_click}")
+                                                            print(f"      Tento re-login e riprovo l'operazione...")
+                                                            raise Exception(f"SESSION_EXPIRED:{url_dopo_click}")
                                                         else:
                                                             print(f"   ❌ ERRORE CRITICO: URL non corrisponde a Company Card!")
                                                             raise Exception(f"Pagina errata dopo click 'Richiedi' (ricerca diretta): {url_dopo_click}")
@@ -2068,6 +2158,10 @@ class CribisNuovaRicerca:
                                                     print(f"   ❌ ERRORE CRITICO: Documento non disponibile!")
                                                     print(f"      URL ottenuto: {url_dopo_click}")
                                                     raise Exception(f"Documento 'Company Card Completa' non disponibile per questo CF. URL: {url_dopo_click}")
+                                                elif "sessionExpired" in url_dopo_click or "LogOn" in url_dopo_click:
+                                                    print(f"   ⚠️  SESSIONE SCADUTA! URL: {url_dopo_click}")
+                                                    print(f"      Tento re-login e riprovo l'operazione...")
+                                                    raise Exception(f"SESSION_EXPIRED:{url_dopo_click}")
                                                 else:
                                                     print(f"   ❌ ERRORE CRITICO: URL non corrisponde a Company Card!")
                                                     print(f"      URL atteso: contiene '/Storage/Document/' (escludendo DocumentUnavailable)")
