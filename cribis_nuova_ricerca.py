@@ -2663,6 +2663,32 @@ class CribisNuovaRicerca:
         # Determina stato dati
         stato = "completi" if all(x is not None for x in [personale, fatturato, attivo]) else ("parziali" if any(x is not None for x in [personale, fatturato, attivo]) else "assenti")
         
+        # DEBUG: Salva HTML se dati assenti o parziali
+        if stato != "completi":
+            try:
+                import os, json
+                from datetime import datetime
+                html_content = page.content()
+                ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+                base = os.path.join(os.getcwd(), "downloads", "debug")
+                os.makedirs(base, exist_ok=True)
+                html_path = os.path.join(base, f"{cf}_{ts}_dom.html")
+                json_path = os.path.join(base, f"{cf}_{ts}_dom.json")
+                with open(html_path, "w", encoding="utf-8") as f:
+                    f.write(html_content)
+                with open(json_path, "w", encoding="utf-8") as f:
+                    json.dump({
+                        "cf": cf,
+                        "personale": personale,
+                        "fatturato": fatturato,
+                        "attivo": attivo,
+                        "stato_dati": stato,
+                        "fonte": "pagina_web_dom"
+                    }, f, ensure_ascii=False, indent=2)
+                print(f"   🧪 DEBUG DOM salvato: {html_path} | {json_path}")
+            except Exception as debug_err:
+                print(f"   ⚠️ Errore salvataggio debug: {debug_err}")
+        
         return {
             "cf": cf,
             "personale": personale,
