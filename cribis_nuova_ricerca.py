@@ -1294,13 +1294,54 @@ class CribisNuovaRicerca:
             campo_ricerca = self.page.locator('input[title="Inserisci i termini da cercare"]')
             campo_ricerca.fill(codice_fiscale)
             self.page.keyboard.press("Enter")
-            self.page.wait_for_timeout(2000)
+            
+            # Attendi caricamento risultati (aumentato da 2s a 5s)
+            print("   ⏳ Attendo caricamento risultati (5s)...")
+            self.page.wait_for_timeout(5000)
             
             # STEP 2: Click sul nome azienda (primo risultato)
             print("🎯 STEP 2: Click su nome azienda...")
             nome_azienda = self.page.locator('div[class*="result"] a:first-of-type').first
             
-            if not nome_azienda.is_visible():
+            # Verifica se l'azienda è visibile (con timeout di 3s)
+            try:
+                is_visible = nome_azienda.is_visible(timeout=3000)
+            except:
+                is_visible = False
+            
+            if not is_visible:
+                print("   ⚠️  Primo risultato non visibile, provo selettori alternativi...")
+                # Prova selettori alternativi
+                selettori_alternativi = [
+                    'div.result a:first-of-type',
+                    'div.results a:first-of-type',
+                    'a[href*="Purchase/Company"]',
+                    '.search-result a:first-of-type'
+                ]
+                
+                for sel in selettori_alternativi:
+                    try:
+                        alt_azienda = self.page.locator(sel).first
+                        if alt_azienda.is_visible(timeout=2000):
+                            nome_azienda = alt_azienda
+                            is_visible = True
+                            print(f"   ✅ Trovata con selettore: {sel}")
+                            break
+                    except:
+                        continue
+            
+            if not is_visible:
+                # Screenshot per debug
+                try:
+                    screenshot_path = f"debug_no_results_{codice_fiscale}.png"
+                    self.page.screenshot(path=screenshot_path, full_page=True)
+                    print(f"   📸 Screenshot salvato: {screenshot_path}")
+                except:
+                    pass
+                
+                print(f"   ❌ Azienda {codice_fiscale} non trovata nei risultati")
+                print(f"   💡 Possibili cause: società cessata, inattiva, o CF errato")
+                
                 return {
                     "errore": "Azienda non trovata nei risultati",
                     "cf": codice_fiscale,
