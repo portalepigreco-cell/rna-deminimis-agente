@@ -100,7 +100,20 @@ class CalcolatoreDimensionePMI:
                 self.cribis.login()
                 self.browser_attivo = True
             else:
-                print("♻️  Browser già attivo, riutilizzo sessione esistente (nessun nuovo login)")
+                print("♻️  Browser già attivo, verifico sessione...")
+                # Verifica che la sessione sia ancora valida
+                if not self.cribis._check_and_handle_session_expired():
+                    print("⚠️  Sessione scaduta durante riutilizzo, errore ripristino")
+                    # Se fallisce, prova a rifare login completo
+                    try:
+                        print("🔄 Tento re-login completo...")
+                        if not self.cribis.login():
+                            raise Exception("Re-login fallito durante riutilizzo sessione")
+                        print("✅ Re-login completato")
+                    except Exception as e:
+                        raise Exception(f"Impossibile ripristinare sessione: {e}")
+                else:
+                    print("✅ Sessione valida, procedo")
             
             # STEP 1: Estrai gruppo societario completo (collegate + partner)
             print("\n1️⃣ ESTRAZIONE GRUPPO SOCIETARIO")
@@ -198,9 +211,10 @@ class CalcolatoreDimensionePMI:
             )
             risultato["classificazione"] = classificazione
             
-            # Raccogli società senza dati
+            # Raccogli società senza dati (SOLO tra le collegate >50%)
+            # Le società partner (≤50%) non vengono incluse perché sono escluse per normativa, non per mancanza dati
             risultato["societa_senza_dati"] = []
-            for soc in (risultato["societa_collegate"] + risultato["societa_partner"]):
+            for soc in risultato["societa_collegate"]:  # Solo collegate, non partner
                 if soc.get("stato_dati") == "assenti":
                     risultato["societa_senza_dati"].append({
                         "cf": soc["cf"],
