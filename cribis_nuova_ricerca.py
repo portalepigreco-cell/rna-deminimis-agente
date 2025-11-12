@@ -114,13 +114,16 @@ class CribisNuovaRicerca:
     def _check_and_handle_session_expired(self):
         """
         Verifica se la sessione è scaduta e, in caso, esegue re-login.
+        Controlla anche se il campo di ricerca è accessibile.
         
         Returns:
             bool: True se la sessione è valida (o è stato fatto re-login con successo)
         """
         current_url = self.page.url
+        
+        # Verifica 1: URL indica sessione scaduta?
         if "sessionExpired" in current_url or "LogOn" in current_url:
-            print("⚠️  Sessione scaduta rilevata, eseguo re-login automatico...")
+            print("⚠️  Sessione scaduta rilevata da URL, eseguo re-login automatico...")
             try:
                 if not self.login():
                     print("❌ Re-login automatico fallito")
@@ -130,6 +133,34 @@ class CribisNuovaRicerca:
             except Exception as e:
                 print(f"❌ Errore durante re-login automatico: {e}")
                 return False
+        
+        # Verifica 2: Siamo sulla Home page?
+        if "Home" not in current_url:
+            print(f"⚠️  Non sono sulla Home (URL: {current_url}), navigo...")
+            try:
+                self.page.goto(f"{self.base_url}/#Home/Index", wait_until="domcontentloaded")
+                time.sleep(2)
+                # Ricontrolla URL dopo navigazione
+                if "sessionExpired" in self.page.url or "LogOn" in self.page.url:
+                    print("⚠️  Redirect a sessione scaduta, eseguo re-login...")
+                    if not self.login():
+                        return False
+                    return True
+            except Exception as e:
+                print(f"⚠️  Errore navigazione Home: {e}")
+                return False
+        
+        # Verifica 3: Il campo di ricerca è presente?
+        try:
+            campo = self.page.query_selector('input[title="Inserisci i termini da cercare"]')
+            if not campo:
+                print("⚠️  Campo ricerca non trovato, possibile sessione invalida, tento re-login...")
+                if not self.login():
+                    return False
+                return True
+        except Exception:
+            pass
+        
         return True
     
     def login(self):
@@ -1209,18 +1240,18 @@ class CribisNuovaRicerca:
             if not self.cerca_nel_campo_principale(partita_iva):
                 risultato["errore"] = "Ricerca nel campo principale fallita"
                 
-                # Invia alert email
-                if EMAIL_ALERTS_ENABLED:
-                    try:
-                        print("📧 Invio alert email per errore ricerca Cribis...")
-                        alert_cribis_error(
-                            partita_iva=partita_iva,
-                            errore="Campo ricerca principale non trovato - Possibile cambio interfaccia",
-                            fase="Ricerca P.IVA",
-                            screenshot_path="debug_cribis_nuova_02_dopo_login.png" if os.path.exists("debug_cribis_nuova_02_dopo_login.png") else None
-                        )
-                    except Exception as email_err:
-                        print(f"⚠️ Errore invio alert email: {email_err}")
+                # Alert email DISABILITATO: ora gestiamo automaticamente sessione scaduta con retry
+                # if EMAIL_ALERTS_ENABLED:
+                #     try:
+                #         print("📧 Invio alert email per errore ricerca Cribis...")
+                #         alert_cribis_error(
+                #             partita_iva=partita_iva,
+                #             errore="Campo ricerca principale non trovato - Possibile cambio interfaccia",
+                #             fase="Ricerca P.IVA",
+                #             screenshot_path="debug_cribis_nuova_02_dopo_login.png" if os.path.exists("debug_cribis_nuova_02_dopo_login.png") else None
+                #         )
+                #     except Exception as email_err:
+                #         print(f"⚠️ Errore invio alert email: {email_err}")
                 
                 return risultato
             
