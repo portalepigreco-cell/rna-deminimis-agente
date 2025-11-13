@@ -8,7 +8,8 @@ Flask>=2.3.0
 Flask-CORS>=4.0.0
 
 # Dipendenze per automazione browser (opzionale per produzione)
-playwright>=1.40.0
+# NOTA: Versione fissata a 1.55.0 per allineamento con Docker image disponibile
+playwright==1.55.0
 
 # Dipendenze per OCR (opzionale)
 pytesseract>=0.3.10
