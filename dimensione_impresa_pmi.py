@@ -101,19 +101,43 @@ class CalcolatoreDimensionePMI:
                 self.browser_attivo = True
             else:
                 print("♻️  Browser già attivo, verifico sessione...")
-                # Verifica che la sessione sia ancora valida
-                if not self.cribis._check_and_handle_session_expired():
-                    print("⚠️  Sessione scaduta durante riutilizzo, errore ripristino")
-                    # Se fallisce, prova a rifare login completo
-                    try:
-                        print("🔄 Tento re-login completo...")
-                        if not self.cribis.login():
-                            raise Exception("Re-login fallito durante riutilizzo sessione")
-                        print("✅ Re-login completato")
-                    except Exception as e:
-                        raise Exception(f"Impossibile ripristinare sessione: {e}")
-                else:
-                    print("✅ Sessione valida, procedo")
+                try:
+                    # Verifica che la sessione sia ancora valida
+                    if not self.cribis._check_and_handle_session_expired():
+                        print("⚠️  Sessione scaduta durante riutilizzo, errore ripristino")
+                        # Se fallisce, prova a rifare login completo
+                        try:
+                            print("🔄 Tento re-login completo...")
+                            if not self.cribis.login():
+                                raise Exception("Re-login fallito durante riutilizzo sessione")
+                            print("✅ Re-login completato")
+                        except Exception as e:
+                            raise Exception(f"Impossibile ripristinare sessione: {e}")
+                    else:
+                        print("✅ Sessione valida, procedo")
+                except Exception as browser_err:
+                    error_msg = str(browser_err).lower()
+                    # Errore critico: browser thread morto o crashato
+                    if "thread" in error_msg or "exited" in error_msg or "closed" in error_msg:
+                        print(f"⚠️  BROWSER CRASHATO/MORTO: {browser_err}")
+                        print("🔄 Chiudo browser morto e reinizializzo completamente...")
+                        
+                        # Chiudi browser morto (ignora errori)
+                        try:
+                            if self.cribis:
+                                self.cribis.__exit__(None, None, None)
+                        except:
+                            pass
+                        
+                        # Reinizializza tutto da zero
+                        self.cribis = CribisNuovaRicerca(headless=self.headless)
+                        self.cribis.__enter__()
+                        self.cribis.login()
+                        self.browser_attivo = True
+                        print("✅ Browser reinizializzato e login completato")
+                    else:
+                        # Altri errori, propaga
+                        raise
             
             # STEP 1: Estrai gruppo societario completo (collegate + partner)
             print("\n1️⃣ ESTRAZIONE GRUPPO SOCIETARIO")
