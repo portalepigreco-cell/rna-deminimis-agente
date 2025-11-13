@@ -2,7 +2,7 @@
 # Usa immagine ufficiale Microsoft Playwright con Python
 # Questa immagine include già Chromium e tutte le dipendenze di sistema
 
-FROM mcr.microsoft.com/playwright/python:v1.55.0-jammy
+FROM mcr.microsoft.com/playwright/python:v1.56.0-jammy
 
 # Imposta directory di lavoro
 WORKDIR /app
