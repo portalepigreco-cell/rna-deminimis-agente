@@ -790,29 +790,19 @@ class CribisNuovaRicerca:
                         
                         # Aspetta che la nuova tab sia caricata
                         self.page.wait_for_load_state("domcontentloaded")
-                        time.sleep(3)
+                        time.sleep(2)
                         
                         print(f"📍 URL nuova tab: {self.page.url}")
                         
-                        # Aspetta che il contenuto sia completamente caricato
-                        print("⏳ Aspetto caricamento completo del report (può richiedere tempo)...")
-                        try:
-                            self.page.wait_for_load_state("networkidle", timeout=45000)
-                        except:
-                            print("⚠️ Timeout networkidle, continuo comunque...")
+                        # SOSTITUITO: invece di sleep fissi, usa il metodo intelligente che aspetta la generazione
+                        print("⏳ Aspetto che il report 'Gruppo Societario' sia completamente generato...")
+                        print("   (Cribis può impiegare fino a 3 minuti per report complessi)")
                         
-                        # Aspetta extra per rendering completo
-                        time.sleep(5)
-                        
-                        # Verifica che ci siano elementi del report (codici fiscali, nomi aziende, etc)
-                        print("🔍 Verifico presenza elementi report...")
-                        try:
-                            # Aspetta che compaia almeno un elemento tipico del gruppo societario
-                            self.page.wait_for_selector('body:has-text("Cod. Fisc."), body:has-text("Italia"), body:has-text("SRL"), body:has-text("SPA")', timeout=10000)
-                            print("✅ Elementi report trovati")
-                        except:
-                            print("⚠️ Elementi report non trovati subito, aspetto ancora...")
-                            time.sleep(5)
+                        if not self.aspetta_generazione_report(timeout=180):  # 3 minuti
+                            print("⚠️  Timeout generazione report (180s), continuo comunque...")
+                            print("   Il report potrebbe non essere completo")
+                        else:
+                            print("✅ Report 'Gruppo Societario' completamente generato e pronto!")
                     else:
                         # Nessuna nuova tab - chiudi modale e vai a MyDocs
                         print("📂 Nessuna nuova tab, il report va in MyDocs...")
@@ -983,81 +973,99 @@ class CribisNuovaRicerca:
     
     def aspetta_generazione_report(self, timeout=60):
         """
-        Aspetta che il report venga generato
+        Aspetta che il report 'Gruppo Societario' venga completamente generato.
+        Verifica la presenza di elementi chiave come codici fiscali e nomi società.
         
         Args:
-            timeout (int): Tempo massimo di attesa in secondi
+            timeout (int): Tempo massimo di attesa in secondi (default 60)
             
         Returns:
-            bool: True se report generato
+            bool: True se report generato completamente
         """
         try:
-            print(f"\n⏳ Attesa generazione report (max {timeout} secondi)...")
+            print(f"⏳ Attesa generazione report (max {timeout} secondi)...")
             
             start_time = time.time()
+            last_progress = 0
             
-            # Possibili indicatori di completamento
+            # Indicatori che il report è completo (più specifici)
             indicatori_completamento = [
-                # Elementi che indicano che il report è pronto
-                'text="Gruppo Societario"',
-                '.corporate-structure',
-                '.gruppo-societario',
-                'text="Cod. Fisc."',
-                'text="Italia"'
+                'Cod. Fisc.',           # Colonna codici fiscali
+                'Italia',               # Paese società
+                '%',                    # Percentuali di partecipazione
+                'Diretto',              # Tipo partecipazione
+                'SRL',                  # Forme societarie comuni
+                'SPA'
             ]
             
-            # Possibili indicatori di caricamento
+            # Indicatori di caricamento in corso
             indicatori_loading = [
-                '.loading',
-                '.spinner',
-                'text="Caricamento"',
-                'text="Generazione in corso"'
+                'loading',
+                'spinner',
+                'Caricamento',
+                'Generazione in corso',
+                'Attendere'
             ]
             
             while time.time() - start_time < timeout:
-                # Controlla se ci sono indicatori di loading
-                has_loading = False
-                for sel in indicatori_loading:
-                    try:
-                        elementi = self.page.query_selector_all(sel)
-                        if elementi:
-                            has_loading = True
-                            break
-                    except:
-                        continue
-                
-                # Controlla se il report è pronto
-                report_ready = False
-                for sel in indicatori_completamento:
-                    try:
-                        elementi = self.page.query_selector_all(sel)
-                        if elementi and len(elementi) > 0:
-                            report_ready = True
-                            break
-                    except:
-                        continue
-                
                 elapsed = int(time.time() - start_time)
                 
-                if report_ready and not has_loading:
-                    print(f"✅ Report generato in {elapsed} secondi")
-                    break
+                # Progress indicator ogni 10 secondi
+                if elapsed >= last_progress + 10:
+                    print(f"   ⏳ {elapsed}/{timeout} secondi trascorsi...")
+                    last_progress = elapsed
                 
-                # Progress indicator
-                if elapsed % 5 == 0:
-                    print(f"   ⏳ {elapsed}/{timeout} secondi...")
+                try:
+                    # Controlla se ci sono ancora indicatori di loading
+                    page_content = self.page.content()
+                    has_loading = any(ind.lower() in page_content.lower() for ind in indicatori_loading)
+                    
+                    if has_loading:
+                        print(f"   🔄 Rilevato caricamento in corso...")
+                        time.sleep(2)
+                        continue
+                    
+                    # Conta quanti indicatori di completamento sono presenti
+                    indicatori_trovati = sum(1 for ind in indicatori_completamento if ind in page_content)
+                    
+                    # Report pronto se abbiamo almeno 4 indicatori su 6
+                    if indicatori_trovati >= 4:
+                        print(f"✅ Report pronto! Trovati {indicatori_trovati}/{len(indicatori_completamento)} indicatori")
+                        
+                        # Aspetta extra per rendering completo
+                        time.sleep(3)
+                        
+                        # Salva screenshot finale
+                        try:
+                            self.page.screenshot(path="debug_cribis_nuova_11_report_generato.png")
+                            print("📸 Screenshot: debug_cribis_nuova_11_report_generato.png")
+                        except:
+                            pass
+                        
+                        return True
+                    
+                    # Se abbiamo almeno 2 indicatori, siamo sulla strada giusta
+                    if indicatori_trovati >= 2:
+                        print(f"   📊 Parzialmente caricato ({indicatori_trovati}/{len(indicatori_completamento)} indicatori)")
+                    
+                except Exception as e:
+                    print(f"   ⚠️  Errore verifica completamento: {e}")
                 
-                time.sleep(1)
+                # Attendi 2 secondi prima del prossimo controllo
+                time.sleep(2)
             
-            # Salva screenshot finale
-            self.page.screenshot(path="debug_cribis_nuova_11_report_generato.png")
-            print("📸 Screenshot: debug_cribis_nuova_11_report_generato.png")
+            # Timeout raggiunto senza completamento
+            elapsed_total = int(time.time() - start_time)
+            print(f"⚠️  Timeout raggiunto ({elapsed_total}s) - report potrebbe non essere completo")
             
-            # Aspetta extra per sicurezza
-            time.sleep(3)
+            # Salva screenshot anche in caso di timeout
+            try:
+                self.page.screenshot(path="debug_cribis_nuova_11_report_timeout.png")
+                print("📸 Screenshot timeout: debug_cribis_nuova_11_report_timeout.png")
+            except:
+                pass
             
-            print("✅ Generazione completata")
-            return True
+            return False
             
         except Exception as e:
             print(f"❌ Errore durante attesa report: {str(e)}")
