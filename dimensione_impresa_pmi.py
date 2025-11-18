@@ -112,13 +112,19 @@ class CalcolatoreDimensionePMI:
                                 raise Exception("Re-login fallito durante riutilizzo sessione")
                             print("✅ Re-login completato")
                         except Exception as e:
-                            raise Exception(f"Impossibile ripristinare sessione: {e}")
+                            # IMPORTANTE: Mantieni l'errore originale per detection "thread"
+                            error_msg_inner = str(e).lower()
+                            if "thread" in error_msg_inner or "exited" in error_msg_inner or "closed" in error_msg_inner:
+                                # Browser morto - propaga con messaggio che possiamo rilevare
+                                raise Exception(f"BROWSER_THREAD_DEAD: {e}")
+                            else:
+                                raise Exception(f"Impossibile ripristinare sessione: {e}")
                     else:
                         print("✅ Sessione valida, procedo")
                 except Exception as browser_err:
                     error_msg = str(browser_err).lower()
                     # Errore critico: browser thread morto o crashato
-                    if "thread" in error_msg or "exited" in error_msg or "closed" in error_msg:
+                    if "thread" in error_msg or "exited" in error_msg or "closed" in error_msg or "browser_thread_dead" in error_msg:
                         print(f"⚠️  BROWSER CRASHATO/MORTO: {browser_err}")
                         print("🔄 Chiudo browser morto e reinizializzo completamente...")
                         

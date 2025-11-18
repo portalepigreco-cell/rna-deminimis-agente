@@ -1024,7 +1024,7 @@ class CribisNuovaRicerca:
                         print(f"   🔄 Rilevato caricamento in corso...")
                         time.sleep(2)
                         continue
-                    
+                
                     # Conta quanti indicatori di completamento sono presenti
                     indicatori_trovati = sum(1 for ind in indicatori_completamento if ind in page_content)
                     
