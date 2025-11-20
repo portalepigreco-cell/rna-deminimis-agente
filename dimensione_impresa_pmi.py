@@ -271,9 +271,17 @@ class CalcolatoreDimensionePMI:
             return risultato
             
         finally:
-            # NON chiudere il browser (riutilizzo sessione tra richieste)
-            # Il browser verrà chiuso solo chiamando esplicitamente close()
-            pass
+            # Dal 20/11/2025 disabilitiamo il riutilizzo della sessione:
+            # ogni richiesta chiude e riapre il browser per evitare "thread exited".
+            try:
+                if self.cribis:
+                    print("🧹 Chiudo e resetto browser Cribis (fine richiesta)...")
+                    self.cribis.__exit__(None, None, None)
+            except Exception as close_err:
+                print(f"⚠️  Errore durante chiusura browser: {close_err}")
+            finally:
+                self.cribis = None
+                self.browser_attivo = False
 
     def _costruisci_tabella_grp(self, principale: Dict, collegate: List[Dict], partner: List[Dict]) -> List[Dict]:
         """Crea la tabella grp: tipo, quota (decimale), ULA, fatturato, attivo.
