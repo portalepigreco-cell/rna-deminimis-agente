@@ -49,7 +49,7 @@ class CribisNuovaRicerca:
         self.base_url = "https://www2.cribisx.com"
         # Credenziali Cribis: priorità a variabili d'ambiente, poi fallback
         self.username = os.environ.get('CRIBIS_USERNAME', 'CC838673')
-        self.password = os.environ.get('CRIBIS_PASSWORD', '27_10_2025__Pigreco_')
+        self.password = os.environ.get('CRIBIS_PASSWORD', '30_12_2025__Pigreco_')
         self.headless = headless
         self.playwright = None
         self.browser = None
